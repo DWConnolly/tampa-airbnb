@@ -24,8 +24,8 @@ const Footer = () => {
               {property.neighborhood} · {property.city}
             </p>
             <p className="font-body text-champagne-300 leading-relaxed max-w-md">
-              A Greek-inspired retreat where Mediterranean elegance meets Tampa's vibrant 
-              energy. Your sanctuary of coastal serenity awaits.
+              A tropical Mediterranean retreat where coastal elegance meets Tampa's vibrant 
+              energy. Your sanctuary of serenity awaits.
             </p>
           </div>
 

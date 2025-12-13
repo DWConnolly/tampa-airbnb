@@ -63,7 +63,7 @@ const Experience = () => {
           </h2>
           <div className="gold-line-center mb-6" />
           <p className="font-body text-lg text-charcoal-700 max-w-2xl mx-auto">
-            Every space has been thoughtfully curated to evoke the serenity of a Greek coastal 
+            Every space has been thoughtfully curated to evoke the serenity of a tropical Mediterranean 
             escape — airy, bright, and effortlessly elegant.
           </p>
         </motion.div>

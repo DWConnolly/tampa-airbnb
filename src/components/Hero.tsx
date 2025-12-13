@@ -15,12 +15,13 @@ const Hero = () => {
       {/* Background Image */}
       <div className="absolute inset-0">
         <motion.img
-          initial={{ scale: 1.1 }}
+          initial={{ scale: 1.05 }}
           animate={{ scale: 1 }}
           transition={{ duration: 1.5, ease: [0.4, 0, 0.2, 1] }}
           src={heroImages[0]}
           alt="Blue Bliss By The Bay exterior"
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover object-center"
+          style={{ objectPosition: '50% 30%' }}
         />
         <div className="absolute inset-0 overlay-gradient" />
       </div>
@@ -46,8 +47,9 @@ const Hero = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.8 }}
           className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl text-champagne-50 font-medium leading-tight mb-6"
+          style={{ textShadow: '0 4px 8px rgba(0,0,0,0.8), 0 8px 25px rgba(0,0,0,0.6), 0 20px 50px rgba(0,0,0,0.4)' }}
         >
-          Your Greek-Inspired
+          Your Tropical Mediterranean
           <br />
           <span className="text-gold-400">Tampa Retreat</span>
         </motion.h1>
@@ -58,6 +60,7 @@ const Hero = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7, duration: 0.8 }}
           className="font-body text-lg sm:text-xl text-champagne-200 max-w-2xl mx-auto mb-8 leading-relaxed"
+          style={{ textShadow: '0 2px 6px rgba(0,0,0,0.8), 0 4px 15px rgba(0,0,0,0.5)' }}
         >
           Discover coastal serenity in Tampa Heights — where Mediterranean charm 
           meets urban convenience in a light-filled sanctuary

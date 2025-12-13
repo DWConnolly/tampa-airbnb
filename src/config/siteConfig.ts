@@ -1,6 +1,6 @@
 // ==========================================
 // Blue Bliss By The Bay — Site Configuration
-// Greek Coastal Elegance
+// Tropical Mediterranean Elegance
 // ==========================================
 
 export interface PropertyDetails {
@@ -69,8 +69,8 @@ export interface GalleryImage {
 
 export const property: PropertyDetails = {
   name: 'Blue Bliss By The Bay',
-  tagline: 'Your Greek-Inspired Tampa Retreat',
-  description: 'Discover coastal serenity in the heart of Tampa Heights. This light-filled Greek villa offers the perfect harmony of Mediterranean charm and urban convenience — a tranquil sanctuary where every detail invites relaxation.',
+  tagline: 'Your Tropical Mediterranean Tampa Retreat',
+  description: 'Discover coastal serenity in the heart of Tampa Heights. This light-filled tropical villa offers the perfect harmony of Mediterranean charm and urban convenience — a tranquil sanctuary where every detail invites relaxation.',
   neighborhood: 'Tampa Heights',
   city: 'Tampa',
   state: 'Florida',
@@ -340,8 +340,8 @@ export const galleryImages: GalleryImage[] = [
 
 // Hero background images - Property exterior
 export const heroImages = [
-  'https://drive.google.com/uc?export=view&id=1iTRBGTlMRin2EsbvU9xD6R8EUYEmQoZg',
-  'https://drive.google.com/uc?export=view&id=1iTRBGTlMRin2EsbvU9xD6R8EUYEmQoZg',
+  '/tampa-airbnb/images/hero.jpg',
+  '/tampa-airbnb/images/hero.jpg',
 ];
 
 // ==========================================
@@ -417,8 +417,8 @@ export const navigation = [
 // ==========================================
 
 export const seoConfig = {
-  title: 'Blue Bliss By The Bay | Greek-Inspired Tampa Vacation Rental',
-  description: 'Experience coastal serenity in Tampa Heights. This light-filled Greek villa offers Mediterranean charm, modern amenities, and steps-from-Armature-Works convenience. Book your tranquil retreat today.',
-  keywords: 'Tampa vacation rental, Tampa Heights Airbnb, Greek villa Tampa, Armature Works, Tampa Bay vacation home, luxury rental Tampa',
+  title: 'Blue Bliss By The Bay | Tropical Mediterranean Tampa Vacation Rental',
+  description: 'Experience coastal serenity in Tampa Heights. This light-filled tropical villa offers Mediterranean charm, modern amenities, and steps-from-Armature-Works convenience. Book your tranquil retreat today.',
+  keywords: 'Tampa vacation rental, Tampa Heights Airbnb, Mediterranean villa Tampa, Armature Works, Tampa Bay vacation home, luxury rental Tampa',
   ogImage: heroImages[0],
 };
