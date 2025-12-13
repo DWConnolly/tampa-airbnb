@@ -341,7 +341,7 @@ export const galleryImages: GalleryImage[] = [
 // Hero background images - Tampa skyline and waterfront
 // Will be replaced with property hero image
 export const heroImages = [
-  'https://images.unsplash.com/photo-1540541338287-41700207dee6?w=1920&q=80',
+  'https://media.cntraveler.com/photos/601b10219d4d66f32970a192/16:9/w_2560%2Cc_limit/1097988940',
   'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80',
 ];
 
