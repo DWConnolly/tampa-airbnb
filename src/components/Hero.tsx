@@ -51,7 +51,16 @@ const Hero = () => {
         >
           Your Tropical Mediterranean
           <br />
-          <span className="text-gold-400">Tampa Retreat</span>
+          <span 
+            className="bg-clip-text text-transparent"
+            style={{ 
+              backgroundImage: 'linear-gradient(135deg, #FFB4A2, #D4A574, #4ECDC4)',
+              textShadow: 'none',
+              filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))'
+            }}
+          >
+            Tampa Retreat
+          </span>
         </motion.h1>
 
         {/* Tagline */}

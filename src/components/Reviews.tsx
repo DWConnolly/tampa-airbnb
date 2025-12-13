@@ -107,7 +107,7 @@ const Reviews = () => {
                     {review.name}
                   </p>
                   <p className="font-body text-xs text-champagne-300">
-                    {review.date}
+                    {review.location && <span>{review.location} · </span>}{review.date}
                   </p>
                 </div>
               </div>

@@ -34,6 +34,21 @@
   --color-seafoam-400: #8DCACD;
   --color-seafoam-500: #72BABD;
   
+  /* Tropical Coral — Warm sunset accents */
+  --color-coral-300: #FFB4A2;
+  --color-coral-400: #FF9B85;
+  --color-coral-500: #E5847A;
+  
+  /* Tropical Teal — Ocean depth */
+  --color-teal-400: #4ECDC4;
+  --color-teal-500: #45B7AA;
+  --color-teal-600: #3BA99C;
+  
+  /* Palm Green — Lush foliage */
+  --color-palm-400: #7CB77B;
+  --color-palm-500: #6BAF6A;
+  --color-palm-600: #5A9F59;
+  
   /* Premium Charcoal — Text */
   --color-charcoal-900: #2C3E50;
   --color-charcoal-800: #34495E;
@@ -104,12 +119,12 @@ body {
 }
 
 .gold-glow:hover {
-  box-shadow: 0 0 30px 0 rgba(212, 165, 116, 0.4);
+  box-shadow: 0 0 30px 0 rgba(255, 155, 133, 0.3), 0 0 50px 0 rgba(78, 205, 196, 0.2);
 }
 
-/* Premium Button */
+/* Premium Button - Tropical */
 .btn-primary {
-  background: linear-gradient(135deg, var(--color-gold-400), var(--color-gold-500));
+  background: linear-gradient(135deg, var(--color-coral-400) 0%, var(--color-gold-400) 50%, var(--color-gold-500) 100%);
   color: var(--color-champagne-50);
   font-family: var(--font-heading);
   font-weight: 600;
@@ -121,32 +136,44 @@ body {
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, var(--color-gold-500), var(--color-gold-600));
+  background: linear-gradient(135deg, var(--color-coral-500) 0%, var(--color-gold-500) 50%, var(--color-gold-600) 100%);
   transform: translateY(-2px);
-  box-shadow: 0 10px 40px -10px rgba(212, 165, 116, 0.5);
+  box-shadow: 0 10px 40px -10px rgba(255, 155, 133, 0.5);
 }
 
-/* Gold Accent Line */
+/* Tropical Accent Line */
 .gold-line {
   width: 60px;
   height: 2px;
-  background: linear-gradient(90deg, var(--color-gold-400), var(--color-gold-500));
+  background: linear-gradient(90deg, var(--color-coral-400), var(--color-gold-400), var(--color-teal-400));
 }
 
 .gold-line-center {
   width: 80px;
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--color-gold-400), var(--color-gold-500), transparent);
+  background: linear-gradient(90deg, transparent, var(--color-coral-400), var(--color-gold-400), var(--color-teal-400), transparent);
   margin: 0 auto;
 }
 
-/* Image Overlay Gradient */
+/* Tropical gradient for special elements */
+.tropical-gradient {
+  background: linear-gradient(135deg, var(--color-coral-400), var(--color-gold-400), var(--color-teal-400));
+}
+
+/* Image Overlay Gradient - Tropical Sunset */
 .overlay-gradient {
   background: linear-gradient(
     to bottom,
-    rgba(15, 44, 74, 0.1) 0%,
-    rgba(15, 44, 74, 0.4) 50%,
-    rgba(15, 44, 74, 0.7) 100%
+    rgba(15, 44, 74, 0.05) 0%,
+    rgba(15, 44, 74, 0.25) 40%,
+    rgba(26, 75, 109, 0.5) 70%,
+    rgba(15, 44, 74, 0.75) 100%
+  ),
+  linear-gradient(
+    135deg,
+    rgba(255, 155, 133, 0.1) 0%,
+    transparent 50%,
+    rgba(78, 205, 196, 0.08) 100%
   );
 }
 

@@ -43,6 +43,7 @@ export interface LocationHighlight {
 export interface Review {
   id: number;
   name: string;
+  location?: string;
   date: string;
   rating: number;
   quote: string;
@@ -203,38 +204,51 @@ export const locationHighlights: LocationHighlight[] = [
 export const reviews: Review[] = [
   {
     id: 1,
-    name: 'Sarah M.',
-    date: 'November 2024',
+    name: 'Kevin',
+    location: 'Michigan',
+    date: 'February 2025',
     rating: 5,
-    quote: 'Absolutely stunning property! The attention to detail is remarkable. We felt like we were on a Mediterranean getaway without leaving Florida.',
+    quote: 'This was one of our best family vacations. We enjoyed breakfast on the sunny back patio each morning, while the clean, turfed yard gave our kids space to play. Blue Bliss was clean, inviting, and well-equipped, with thoughtful touches.',
   },
   {
     id: 2,
-    name: 'Michael R.',
-    date: 'October 2024',
+    name: 'Nancy',
+    location: 'Airbnb Member',
+    date: 'March 2025',
     rating: 5,
-    quote: 'The perfect blend of style and comfort. The location is unbeatable — we walked to Armature Works every morning for coffee.',
+    quote: 'We had an amazing time celebrating our friend\'s birthday at Blue Bliss! The house was incredibly clean and the upgraded kitchen had every item we needed for cooking. The beds were extremely comfortable and the neighbors very kind.',
   },
   {
     id: 3,
-    name: 'Jennifer L.',
-    date: 'October 2024',
+    name: 'Natalie',
+    location: 'Airbnb Member',
+    date: 'August 2024',
     rating: 5,
-    quote: 'A true retreat. The space is so light and airy, exactly as pictured. The fire pit was perfect for evening conversations.',
+    quote: 'We had an incredible stay at Blue Bliss by the Bay! The home was spotless, beautifully decorated, and had all the amenities we could ask for. We enjoyed wine on the deck in the private backyard, the vibes were great!',
   },
   {
     id: 4,
-    name: 'David & Anna K.',
-    date: 'September 2024',
+    name: 'Rebecca',
+    location: 'Asheville, North Carolina',
+    date: 'April 2025',
     rating: 5,
-    quote: 'We\'ve stayed at many vacation rentals, but Blue Bliss stands apart. Thoughtfully designed and impeccably maintained.',
+    quote: 'Blue Bliss was perfect for our girls\' trip to the Women\'s Final Four. The home was comfortable with plenty of space for 6 in our party. Very convenient to downtown as well as nearby local restaurants. Kimberly was an amazing host!',
   },
   {
     id: 5,
-    name: 'Christina W.',
-    date: 'September 2024',
+    name: 'Milton',
+    location: 'Bloomfield Hills, Michigan',
+    date: 'December 2024',
     rating: 5,
-    quote: 'Our family loved every moment. The kids enjoyed the loft, and we appreciated the peaceful, grown-up aesthetic. A rare find!',
+    quote: 'Had a fantastic time staying at Blue Bliss! Great to be walkable to Armature Works and all the great restaurants and bars. The house had a great outdoor space with a gas fire for us to gather around. Highly recommend this 5 Star Getaway!',
+  },
+  {
+    id: 6,
+    name: 'Megan',
+    location: 'Massapequa, New York',
+    date: 'February 2025',
+    rating: 5,
+    quote: 'This is a wonderful place to stay! The house is very spacious and immaculate. We especially loved the beautiful backyard with a comfortable table and ambiance. Great grocery store and restaurants easily within walking distance.',
   },
 ];
 
