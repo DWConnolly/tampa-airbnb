@@ -1,4 +1,3 @@
-import { HashRouter } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import LocationStory from './components/LocationStory';
@@ -6,27 +5,26 @@ import Experience from './components/Experience';
 import Amenities from './components/Amenities';
 import Guidelines from './components/Guidelines';
 import Reviews from './components/Reviews';
-import BookCTA from './components/BookCTA';
+import BookCTA, { MobileBookingBar } from './components/BookCTA';
 import Footer from './components/Footer';
+import './App.css';
 
-function App() {
+export default function App() {
   return (
-    <HashRouter>
-      <div className="min-h-screen bg-champagne-50">
-        <Navbar />
-        <main>
-          <Hero />
-          <LocationStory />
-          <Experience />
-          <Amenities />
-          <Guidelines />
-          <Reviews />
-          <BookCTA />
-        </main>
-        <Footer />
-      </div>
-    </HashRouter>
+    <>
+      <a className="skip-link" href="#main-content">Skip to content</a>
+      <Navbar />
+      <main id="main-content" tabIndex={-1}>
+        <Hero />
+        <Experience />
+        <div className="coastal-amenities"><Amenities /></div>
+        <LocationStory />
+        <div className="coastal-reviews"><Reviews /></div>
+        <Guidelines />
+        <BookCTA />
+      </main>
+      <Footer />
+      <MobileBookingBar />
+    </>
   );
 }
-
-export default App;

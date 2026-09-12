@@ -1,0 +1,28 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Validate Blue Bliss",
+			"type": "shell",
+			"command": "npm run build && npm run lint && node scripts/base-check.mjs",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Preview Blue Bliss",
+			"type": "shell",
+			"command": "npm run preview -- --host 127.0.0.1 --port 4173 --strictPort",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Browser checks Blue Bliss",
+			"type": "shell",
+			"command": "node scripts/browser-check.mjs",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		}
+	]
+}

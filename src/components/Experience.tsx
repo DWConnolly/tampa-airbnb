@@ -1,193 +1,147 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
-import { galleryImages } from '../config/siteConfig';
+import { useEffect, useRef, useState } from 'react';
+import type { MouseEvent } from 'react';
+import { ArrowLeft, ArrowRight, BedDouble, Expand, X } from 'lucide-react';
+import { additionalSleeping, bedrooms, galleryImages, photography, property, siteCopy } from '../config/siteConfig';
+import BookingLink from './BookingLink';
+import PropertyImage from './PropertyImage';
 
-const Experience = () => {
-  const [selectedImage, setSelectedImage] = useState<number | null>(null);
+export default function Experience() {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const openerRef = useRef<HTMLButtonElement | null>(null);
+  const image = galleryImages[activeIndex];
+  const multiple = galleryImages.length > 1;
+  const previewImages = photography.previewIds
+    .map((id) => galleryImages.find((photo) => photo.id === id))
+    .filter((photo) => photo !== undefined);
+  const outdoorImage = galleryImages.find((photo) => photo.id === photography.storyIds.outdoors)!;
+  const indoorImage = galleryImages.find((photo) => photo.id === photography.storyIds.indoors)!;
+  const sleepingImage = galleryImages.find((photo) => photo.id === photography.storyIds.sleeping)!;
 
-  const openLightbox = (index: number) => setSelectedImage(index);
-  const closeLightbox = () => setSelectedImage(null);
+  useEffect(() => {
+    if (!galleryOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [galleryOpen]);
 
-  const nextImage = () => {
-    if (selectedImage !== null) {
-      setSelectedImage((selectedImage + 1) % galleryImages.length);
-    }
-  };
+  function closeGallery() {
+    dialogRef.current?.close();
+  }
 
-  const prevImage = () => {
-    if (selectedImage !== null) {
-      setSelectedImage((selectedImage - 1 + galleryImages.length) % galleryImages.length);
-    }
-  };
+  function openGallery(event: MouseEvent<HTMLButtonElement>, index: number) {
+    openerRef.current = event.currentTarget;
+    setActiveIndex(index);
+    setGalleryOpen(true);
+    dialogRef.current?.showModal();
+  }
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] as const },
-    },
-  };
+  function navigate(direction: number) {
+    setActiveIndex((current) => (current + direction + galleryImages.length) % galleryImages.length);
+  }
 
   return (
-    <section id="experience" className="relative py-24 lg:py-32 bg-champagne-100">
-      {/* Decorative Elements */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold-400/30 to-transparent" />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-100px' }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-16"
-        >
-          <span className="font-heading text-sm tracking-[0.2em] uppercase text-gold-500 mb-4 block">
-            The Experience
-          </span>
-          <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl text-navy-900 mb-6">
-            Light-Filled Coastal Living
-          </h2>
-          <div className="gold-line-center mb-6" />
-          <p className="font-body text-lg text-charcoal-700 max-w-2xl mx-auto">
-            Every space has been thoughtfully curated to evoke the serenity of a tropical Mediterranean 
-            escape — airy, bright, and effortlessly elegant.
-          </p>
-        </motion.div>
-
-        {/* Gallery Grid */}
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: '-50px' }}
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-        >
-          {galleryImages.map((image, index) => (
-            <motion.div
-              key={image.id}
-              variants={itemVariants}
-              className={`relative img-zoom cursor-pointer group ${
-                image.featured ? 'col-span-2 row-span-2' : ''
-              }`}
-              onClick={() => openLightbox(index)}
-            >
-              <div className="relative overflow-hidden rounded-lg aspect-square">
-                <img
-                  src={image.src}
-                  alt={image.alt}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-                {/* Hover Overlay */}
-                <div className="absolute inset-0 bg-navy-900/0 group-hover:bg-navy-900/30 transition-colors duration-300" />
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="w-12 h-12 rounded-full bg-champagne-50/90 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-navy-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                    </svg>
-                  </div>
-                </div>
-                {/* Gold Border on Hover */}
-                <div className="absolute inset-0 border-2 border-gold-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
-              </div>
-            </motion.div>
+    <>
+      <section id="the-home" className="section shell" aria-labelledby="home-title" tabIndex={-1}>
+        <div className="section-intro split-intro home-intro">
+          <div><p className="eyebrow">{siteCopy.home.eyebrow}</p><h2 id="home-title">{siteCopy.home.title}</h2></div>
+          <p>{siteCopy.home.description}</p>
+        </div>
+        <div className="stay-story">
+          <figure className="stay-outdoor">
+            <button className="story-photo" aria-label={`View photo: ${outdoorImage.alt}`} aria-haspopup="dialog" onClick={(event) => openGallery(event, galleryImages.indexOf(outdoorImage))}>
+              <PropertyImage image={outdoorImage} sizes="(min-width: 1440px) 800px, (min-width: 900px) 62vw, 100vw" />
+              <span className="photo-action"><Expand size={16} aria-hidden="true" /> View photo</span>
+            </button>
+            <figcaption className="journal-caption">{siteCopy.stay.outdoor.caption}</figcaption>
+          </figure>
+          <div className="stay-outdoor-copy">
+            <p className="eyebrow">{siteCopy.stay.outdoor.eyebrow}</p>
+            <h3>{siteCopy.stay.outdoor.title}</h3>
+            <p>{siteCopy.stay.outdoor.description}</p>
+          </div>
+          <figure className="stay-indoor">
+            <button className="story-photo" aria-label={`View photo: ${indoorImage.alt}`} aria-haspopup="dialog" onClick={(event) => openGallery(event, galleryImages.indexOf(indoorImage))}>
+              <PropertyImage image={indoorImage} sizes="(min-width: 1440px) 550px, (min-width: 900px) 42vw, 100vw" />
+              <span className="photo-action"><Expand size={16} aria-hidden="true" /> View photo</span>
+            </button>
+            <figcaption className="journal-caption">{siteCopy.stay.indoor.caption}</figcaption>
+          </figure>
+          <div className="stay-indoor-copy">
+            <p className="eyebrow">{siteCopy.stay.indoor.eyebrow}</p>
+            <h3>{siteCopy.stay.indoor.title}</h3>
+            <p>{siteCopy.stay.indoor.description}</p>
+          </div>
+        </div>
+        <details className="owner-note">
+          <summary>{siteCopy.stay.ownerNote.eyebrow}<span>{siteCopy.stay.ownerNote.title}</span></summary>
+          <p>{property.description}</p>
+        </details>
+        <div className="gallery-heading"><div><p className="eyebrow">{siteCopy.home.galleryEyebrow}</p><h3>{siteCopy.home.galleryHeading}</h3></div><span className="gallery-count">{galleryImages.length} {siteCopy.home.photoLabel}</span></div>
+        <div className={`property-gallery ${multiple ? 'has-multiple' : ''}`}>
+          {previewImages.map((photo, index) => (
+            <figure key={photo.id}>
+              <button className="gallery-open" aria-label={`View photo: ${photo.alt}`} aria-haspopup="dialog" onClick={(event) => openGallery(event, galleryImages.indexOf(photo))}>
+                <PropertyImage image={photo} sizes={index === 0 ? '(min-width: 1440px) 660px, (min-width: 600px) 50vw, 100vw' : '(min-width: 1440px) 320px, (min-width: 600px) 25vw, 50vw'} />
+                <span className="photo-action"><Expand size={16} aria-hidden="true" /> View photo</span>
+              </button>
+              <figcaption className="journal-caption"><span>{String(index + 1).padStart(2, '0')}</span>{photo.caption}</figcaption>
+            </figure>
           ))}
-        </motion.div>
+        </div>
+        <div className="gallery-note">
+          <p className="small-note">{siteCopy.home.galleryNote}</p>
+          <button className="button gallery-view-all" aria-haspopup="dialog" onClick={(event) => openGallery(event, 0)}>{siteCopy.home.viewAll} {galleryImages.length} {siteCopy.home.photoLabel}</button>
+          <BookingLink className="text-link">{siteCopy.home.galleryLink}</BookingLink>
+        </div>
+      </section>
 
-        {/* Bottom Accent */}
-        <motion.div
-          initial={{ opacity: 0, scaleX: 0 }}
-          whileInView={{ opacity: 1, scaleX: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, delay: 0.5 }}
-          className="mt-12 h-px bg-gradient-to-r from-transparent via-gold-400 to-transparent"
-        />
-      </div>
-
-      {/* Lightbox */}
-      <AnimatePresence>
-        {selectedImage !== null && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-50 lightbox-overlay flex items-center justify-center p-4"
-            onClick={closeLightbox}
-          >
-            {/* Close Button */}
-            <button
-              onClick={closeLightbox}
-              className="absolute top-6 right-6 p-2 text-champagne-100 hover:text-gold-400 transition-colors"
-              aria-label="Close lightbox"
-            >
-              <X size={32} />
+      <section id="sleeping" className="sleeping-section section" aria-labelledby="sleeping-title" tabIndex={-1}>
+        <div className="shell sleeping-layout">
+          <figure className="sleeping-photo">
+            <button className="story-photo" aria-label={`View photo: ${sleepingImage.alt}`} aria-haspopup="dialog" onClick={(event) => openGallery(event, galleryImages.indexOf(sleepingImage))}>
+              <PropertyImage image={sleepingImage} sizes="(min-width: 1440px) 680px, (min-width: 900px) 50vw, 100vw" />
+              <span className="photo-action"><Expand size={16} aria-hidden="true" /> View photo</span>
             </button>
+            <figcaption className="journal-caption">{siteCopy.sleeping.caption}</figcaption>
+          </figure>
+          <div className="sleeping-copy">
+            <div className="section-intro"><p className="eyebrow">{siteCopy.sleeping.eyebrow}</p><h2 id="sleeping-title">{siteCopy.sleeping.title}</h2><p>{siteCopy.sleeping.description}</p></div>
+            <ol className="bedroom-list">
+              {bedrooms.map((bedroom, index) => <li key={bedroom.name}>
+                <span className="room-number">0{index + 1}</span>
+                <div><h3>{bedroom.name}</h3><p>{bedroom.bedType}</p></div>
+                <BedDouble size={26} strokeWidth={1.3} aria-hidden="true" />
+              </li>)}
+            </ol>
+            <div className="loft-note"><h3>{additionalSleeping.name} · {additionalSleeping.bedType}</h3><p>{additionalSleeping.description}</p></div>
+          </div>
+        </div>
+      </section>
 
-            {/* Navigation Buttons */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                prevImage();
-              }}
-              className="absolute left-4 md:left-8 p-2 text-champagne-100 hover:text-gold-400 transition-colors"
-              aria-label="Previous image"
-            >
-              <ChevronLeft size={40} />
-            </button>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                nextImage();
-              }}
-              className="absolute right-4 md:right-8 p-2 text-champagne-100 hover:text-gold-400 transition-colors"
-              aria-label="Next image"
-            >
-              <ChevronRight size={40} />
-            </button>
-
-            {/* Image */}
-            <motion.div
-              key={selectedImage}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.3 }}
-              className="max-w-5xl max-h-[85vh] w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <img
-                src={galleryImages[selectedImage].src}
-                alt={galleryImages[selectedImage].alt}
-                className="w-full h-full object-contain rounded-lg"
-              />
-              <p className="text-center text-champagne-200 font-body mt-4">
-                {galleryImages[selectedImage].alt}
-              </p>
-              <p className="text-center text-gold-400 font-heading text-sm mt-2">
-                {selectedImage + 1} / {galleryImages.length}
-              </p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </section>
+      <dialog ref={dialogRef} className="gallery-dialog" aria-labelledby="gallery-title" aria-describedby="gallery-caption" onCancel={closeGallery} onClose={() => {
+        setGalleryOpen(false);
+        openerRef.current?.focus({ preventScroll: true });
+      }} onClick={(event) => { if (event.target === event.currentTarget) closeGallery(); }} onKeyDown={(event) => {
+        if (multiple && event.target instanceof HTMLElement && event.target.tagName !== 'SELECT' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+          event.preventDefault();
+          navigate(event.key === 'ArrowLeft' ? -1 : 1);
+        }
+      }}>
+        <div className="dialog-inner">
+          <div className="dialog-heading"><h2 id="gallery-title">{siteCopy.home.galleryTitle}</h2><button className="icon-button" aria-label="Close photo gallery" onClick={closeGallery} autoFocus><X aria-hidden="true" /></button></div>
+          {galleryOpen && <PropertyImage key={image.id} image={image} priority sizes="(min-width: 1120px) 1088px, calc(100vw - 56px)" />}
+          <div className="dialog-footer">
+            {multiple && <button className="icon-button" aria-label="Previous property photo" onClick={() => navigate(-1)}><ArrowLeft aria-hidden="true" /></button>}
+            <p id="gallery-caption" aria-live="polite">{image.caption}<span>{activeIndex + 1} / {galleryImages.length}</span></p>
+            {multiple && <button className="icon-button" aria-label="Next property photo" onClick={() => navigate(1)}><ArrowRight aria-hidden="true" /></button>}
+          </div>
+          {multiple && <div className="photo-jump"><label htmlFor="photo-number">{siteCopy.home.jumpLabel}</label><select id="photo-number" value={activeIndex} onChange={(event) => setActiveIndex(Number(event.target.value))}>
+            {galleryImages.map((photo, index) => <option key={photo.id} value={index}>{index + 1} — {photo.caption}</option>)}
+          </select></div>}
+        </div>
+      </dialog>
+    </>
   );
-};
-
-export default Experience;
+}
