@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-16T00:37:09.459Z",
+  "generatedAt": "2026-11-16T02:20:57.771Z",
   "propertyId": "blue-bliss-by-the-bay",
   "timeZone": "America/New_York",
   "sources": {
@@ -14,7 +14,6 @@
     "open": false,
     "problems": [
       "Direct booking is not enabled in data/booking-config.json.",
-      "No booking-request email address (directBooking.requestEmail) is configured.",
       "Owner has not confirmed: rates.",
       "Owner has not confirmed: taxes.",
       "Owner has not confirmed: policies.",
@@ -23,7 +22,7 @@
       "Owner has not confirmed: requestInboxAndInvoicing.",
       "The Airbnb calendar feed (AIRBNB_ICAL_URL) is not configured."
     ],
-    "requestEmail": "",
+    "requestEmail": "kimberlyfconnolly@gmail.com",
     "termsVersion": "draft-2026-11-15",
     "rules": {
       "minLeadDays": 7,
