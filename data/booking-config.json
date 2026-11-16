@@ -5,7 +5,7 @@
   "termsVersion": "draft-2026-11-15",
   "directBooking": {
     "enabled": false,
-    "requestEmail": ""
+    "requestEmail": "kimberlyfconnolly@gmail.com"
   },
   "rules": {
     "minLeadDays": 7,
