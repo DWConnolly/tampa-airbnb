@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { findConflicts, mergeBySource, mergeRanges, rangesOverlap } from './calendar.ts';
 import type { BookingConfig, CalendarDocument } from './config.ts';
-import { readinessProblems } from './config.ts';
+import { publicBookingSettings, readinessProblems } from './config.ts';
 import { addDays, isIsoDate, todayInTimeZone } from './dates.ts';
 import { buildIcal, classifyOtaEvent, IcalError, parseIcal } from './ical.ts';
 import { quoteStay, type PricingConfig } from './pricing.ts';
@@ -178,6 +178,10 @@ describe('readiness', () => {
     const problems = readinessProblems({ ...config, directBooking: { enabled: false, requestEmail: 'not-an-email' }, ownerConfirmations: { taxes: false } });
     assert.equal(problems.length, 3);
     assert.ok(readinessProblems({ ...config, rules: { ...rules, minLeadDays: 3 } }).length);
+    // Enabled with every confirmation set but no inbox yet: still closed, nothing published as open.
+    const noInbox = { ...config, directBooking: { enabled: true, requestEmail: '' } };
+    assert.deepEqual(readinessProblems(noInbox), ['No booking-request email address (directBooking.requestEmail) is configured.']);
+    assert.equal(publicBookingSettings(noInbox).open, false);
   });
 });
 

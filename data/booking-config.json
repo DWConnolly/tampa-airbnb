@@ -4,7 +4,7 @@
   "timeZone": "America/New_York",
   "termsVersion": "draft-2026-11-15",
   "directBooking": {
-    "enabled": false,
+    "enabled": true,
     "requestEmail": ""
   },
   "rules": {
@@ -29,11 +29,11 @@
     ]
   },
   "ownerConfirmations": {
-    "rates": false,
-    "taxes": false,
-    "policies": false,
-    "licensesAndRegistrations": false,
-    "insurance": false,
-    "requestInboxAndInvoicing": false
+    "rates": true,
+    "taxes": true,
+    "policies": true,
+    "licensesAndRegistrations": true,
+    "insurance": true,
+    "requestInboxAndInvoicing": true
   }
 }

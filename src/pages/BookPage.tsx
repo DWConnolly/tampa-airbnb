@@ -10,6 +10,7 @@ import { buildRequestEmail, mailtoUrl, NOTES_MAX, requestReference, STAY_PURPOSE
 import { earliestDirectCheckIn, latestDirectCheckIn, stayErrorMessages, validateStay } from '../../shared/booking/rules.ts';
 import BookingLink from '../components/BookingLink';
 import PolicySections from '../components/PolicySections';
+import { policiesConfirmed } from '../config/booking';
 import { policies } from '../config/policies';
 import { pageRoutes } from '../config/routes';
 import { assetUrl, externalLinks, property } from '../config/siteConfig';
@@ -105,8 +106,10 @@ function BookingForm({ calendar }: { calendar: CalendarDocument }) {
   const earliest = earliestDirectCheckIn(today, rules);
   const latest = latestDirectCheckIn(today, rules);
   const blocked = calendar.blocked;
-  const canRequest = booking.open && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(booking.requestEmail);
-  const showQuote = booking.open || import.meta.env.DEV || searchParams.has('preview');
+  // calendar.json decides from data/; the site also stays closed while policy drafts have open items.
+  const open = booking.open && policiesConfirmed;
+  const canRequest = open && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(booking.requestEmail);
+  const showQuote = open || import.meta.env.DEV || searchParams.has('preview');
 
   const validCheckIn = (iso: IsoDate) => iso >= earliest && iso <= latest && !isNightBlocked(iso, blocked);
   const validCheckOut = (start: IsoDate, iso: IsoDate) => {
@@ -168,7 +171,7 @@ function BookingForm({ calendar }: { calendar: CalendarDocument }) {
 
   return (
     <>
-      {!booking.open && (
+      {!open && (
         <div className="notice" role="note">
           <p><strong>Direct booking requests are not open yet.</strong> You can view availability here, but requests open only after the host finishes setup. To book now, <a className="inline-link" href={externalLinks.airbnbListing}>use Airbnb</a>.</p>
         </div>
@@ -220,7 +223,7 @@ function BookingForm({ calendar }: { calendar: CalendarDocument }) {
 
             {quote && showQuote && (
               <div className="quote" aria-live="polite">
-                {!booking.open && <p className="draft-banner">Preview only: placeholder rates and tax lines that the owner has not confirmed. Not an offer.</p>}
+                {!open && <p className="draft-banner">Preview only: placeholder rates and tax lines that the owner has not confirmed. Not an offer.</p>}
                 <table>
                   <caption className="visually-hidden">Estimated price breakdown</caption>
                   <tbody>

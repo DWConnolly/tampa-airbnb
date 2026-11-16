@@ -16,7 +16,7 @@ export interface Policy {
   sections: PolicySection[];
 }
 
-const OWNER = 'Owner to confirm:';
+export const OWNER = 'Owner to confirm:';
 
 export const policies: Record<PolicyKey, Policy> = {
   cancellation: {
@@ -143,3 +143,8 @@ export const policies: Record<PolicyKey, Policy> = {
     ],
   },
 };
+
+/** True while any draft "Owner to confirm" question is still in the policy text. */
+export const policiesHaveOpenItems = Object.values(policies).some((policy) =>
+  [policy.intro, ...policy.sections.flatMap((section) => [...(section.paragraphs ?? []), ...(section.items ?? [])])].some((text) => text.includes(OWNER)),
+);
