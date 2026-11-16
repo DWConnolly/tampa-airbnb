@@ -4,6 +4,8 @@
  * Dependency-free Chrome/CDP regression checks. Run: node scripts/browser-check.mjs
  * Requires Node with native fetch/WebSocket and an installed Chrome.
  * Options: --url=http://127.0.0.1:4183/tampa-airbnb/ --no-axe --no-screenshots
+ * --ui-only targets booking/policies and both home CTA states; requires a local
+ * Vite dev URL for in-browser fixtures. --baseline captures pre-redesign screens.
  * CHROME_PATH overrides the macOS Chrome default. Never writes application files.
  * Starts preview only if absent; owns/cleans its Chrome/profile and owned preview.
  * Artifacts/report are retained in an OS temporary directory, printed at completion.
@@ -150,7 +152,7 @@ function browserHelpers() {
   });
   window.__check = { visible, rect, unobscured, overflow };
 }
-async function navigate(width, height, scale = 1) {
+async function navigate(width, height, scale = 1, path = '', readyFixture = false, requestFixture = false) {
   // Use a fresh renderer per scenario. Repeated cross-document navigation of a
   // deeply scrolled target can leave CDP promises in a destroyed context.
   const target = await (await fetch(`${endpoint}/json/new?about:blank`, { method: 'PUT' })).json();
@@ -163,15 +165,69 @@ async function navigate(width, height, scale = 1) {
   cdp.on('Network.responseReceived', e => { responses.push({ url: e.response.url, status: e.response.status, mime: e.response.mimeType }); });
   cdp.on('Network.loadingFailed', e => { if (!e.canceled) networkErrors.push({ type: e.type, error: e.errorText }); });
   await cdp.send('Page.enable'); await cdp.send('Runtime.enable'); await cdp.send('Network.enable');
+  await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
+  if (readyFixture || requestFixture) {
+    if (!['localhost', '127.0.0.1'].includes(url.hostname)) throw new Error('UI fixtures require a local development server');
+    const patterns = readyFixture ? ['*/src/config/booking.ts*'] : ['*/calendar.json*', '*/src/pages/BookPage.tsx*'];
+    const fixtureClient = cdp;
+    const canceledRequests = new Set();
+    fixtureClient.on('Network.loadingFailed', event => { if (event.canceled) canceledRequests.add(event.requestId); });
+    await fixtureClient.send('Fetch.enable', { patterns: patterns.map(urlPattern => ({ urlPattern, requestStage: 'Request' })) });
+    fixtureClient.on('Fetch.requestPaused', async ({ requestId, request, networkId }) => {
+      try {
+        if (new URL(request.url).origin !== url.origin) throw new Error('Fixture request must use the local preview origin');
+        const response = await fetch(request.url, { signal: AbortSignal.timeout(10000) });
+        if (!response.ok) throw new Error(`Fixture source HTTP ${response.status}`);
+        const source = await response.text();
+        let body;
+        const isCalendar = new URL(request.url).pathname.endsWith('/calendar.json');
+        if (isCalendar) {
+          const calendar = JSON.parse(source);
+          calendar.booking.open = true;
+          calendar.booking.requestEmail = 'requests@example.invalid';
+          calendar.booking.problems = [];
+          calendar.blocked = [{ start: '2027-01-28', end: '2027-01-30', source: 'owner' }];
+          body = JSON.stringify(calendar);
+        } else if (readyFixture) {
+          if (!source.includes('const directBookingReady =')) throw new Error('Expected Vite development booking module');
+          body = source.replace(/const directBookingReady =[^;]+;/, 'const directBookingReady = true;');
+        } else {
+          if (!source.includes('window.location.assign(href)')) throw new Error('Expected mailto handoff in development module');
+          body = `window.__uiRequestFixture = true;\n${source.replace('window.location.assign(href)', 'window.__uiMailto = href')}`;
+        }
+        await fixtureClient.send('Fetch.fulfillRequest', { requestId, responseCode: 200, responseHeaders: [{ name: 'Content-Type', value: isCalendar ? 'application/json' : 'text/javascript' }], body: Buffer.from(body).toString('base64') });
+      } catch (error) {
+        // React StrictMode aborts the first availability fetch during effect cleanup.
+        if (canceledRequests.has(networkId)) {
+          report.metrics.canceledFixtureRequests = (report.metrics.canceledFixtureRequests ?? 0) + 1;
+          return;
+        }
+        runtimeErrors.push(`Fixture: ${error.message}`);
+        try { await fixtureClient.send('Fetch.failRequest', { requestId, errorReason: 'Failed' }); }
+        catch (failure) { runtimeErrors.push(`Fixture cleanup: ${failure.message}`); }
+      }
+    });
+  }
+  if (requestFixture) await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: `{
+    const RealDate = Date;
+    window.Date = class extends RealDate {
+      constructor(...args) { super(...(args.length ? args : ['2027-01-12T17:00:00Z'])); }
+      static now() { return new RealDate('2027-01-12T17:00:00Z').getTime(); }
+    };
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+      writeText: async text => { window.__uiClipboard = text; }
+    } });
+  }` });
   await cdp.send('Page.bringToFront');
   await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: `(${browserHelpers.toString()})()` });
   await cdp.send('Emulation.setDeviceMetricsOverride', {
     width, height, deviceScaleFactor: scale, mobile: false,
     screenOrientation: { type: width > height ? 'landscapePrimary' : 'portraitPrimary', angle: width > height ? 90 : 0 },
   });
-  await cdp.send('Page.navigate', { url: url.href });
-  await waitFor(() => cdp.evaluate(expected => location.href === expected && document.readyState === 'complete' && !!document.querySelector('.hero-booking'), url.href));
-  await cdp.evaluate(async () => { await document.fonts.ready; await document.querySelector('.hero-photo img').decode(); });
+  const targetUrl = new URL(path, url).href;
+  await cdp.send('Page.navigate', { url: targetUrl });
+  await waitFor(() => cdp.evaluate(expected => location.href === expected && document.readyState === 'complete' && !!document.querySelector('h1'), targetUrl));
+  await cdp.evaluate(async () => { await document.fonts.ready; await document.querySelector('.hero-photo img')?.decode(); });
   await sleep(150);
 }
 async function key(key, shift = false) {
@@ -196,6 +252,121 @@ async function screenshot(name) {
   const path = join(output, `${name}.png`);
   await writeFile(path, Buffer.from(data, 'base64'));
   report.screenshots.push(path);
+}
+
+async function bookingUiChecks() {
+  const baseline = args.includes('--baseline');
+  for (const width of baseline ? [390, 1440] : [320, 360, 390, 600, 768, 900, 1024, 1100, 1199, 1200, 1440, 1920]) {
+    await navigate(width, 960, 1, 'book/?preview');
+    await waitFor(() => cdp.evaluate(() => !!document.querySelector('.rdp-day_button')));
+    const geometry = await cdp.evaluate(() => ({
+      overflow: __check.overflow(),
+      targets: [...document.querySelectorAll('.rdp-day_button:not(:disabled), .rdp-button_next, .rdp-button_previous')].filter(__check.visible).map(e => __check.rect(e)),
+      months: document.querySelectorAll('.rdp-month').length,
+    }));
+    if (!baseline) {
+      record(`Booking ${width}: no horizontal overflow`, geometry.overflow.excess <= 1 && !geometry.overflow.offenders.length, geometry.overflow);
+      record(`Booking ${width}: calendar targets at least 44px`, geometry.targets.every(r => r.width >= 43.9 && r.height >= 43.9), geometry);
+      record(`Booking ${width}: four acknowledgements and closed gate`, await cdp.evaluate(() => document.querySelectorAll('.ack-list input[type="checkbox"]').length === 4 && document.querySelector('.pay-button').disabled));
+    }
+    if ([390, 1440].includes(width)) {
+      await screenshot(`${baseline ? 'before' : 'after'}-book-${width}`);
+      await cdp.evaluate(() => document.querySelector('.calendar-card').scrollIntoView({ block: 'start' }));
+      await screenshot(`${baseline ? 'before' : 'after'}-calendar-${width}`);
+      await cdp.evaluate(() => document.querySelector('.rdp-day_button:not(:disabled)').click());
+      await cdp.evaluate(() => {
+        const days = [...document.querySelectorAll('.rdp-day_button:not(:disabled)')];
+        days[2]?.click();
+      });
+      await waitFor(() => cdp.evaluate(() => !!document.querySelector('.quote')));
+      await cdp.evaluate(() => document.querySelector('.quote-card').scrollIntoView({ block: 'start' }));
+      await screenshot(`${baseline ? 'before' : 'after'}-estimate-${width}`);
+      await cdp.evaluate(() => document.querySelector('.request-details').scrollIntoView({ block: 'start' }));
+      await screenshot(`${baseline ? 'before' : 'after'}-details-${width}`);
+      if (!baseline) {
+        record(`Booking ${width}: summary follows details`, await cdp.evaluate(() => {
+          const summary = document.querySelector(innerWidth >= 1100 ? '.quote-card' : '.request-mobile-bar');
+          const r = __check.rect(summary);
+          return r && r.top >= 78 && r.bottom <= innerHeight + 1;
+        }));
+        record(`Booking ${width}: preview estimate clearly labelled`, await cdp.evaluate(() => document.querySelector('.quote .draft-banner')?.textContent.includes('Preview only')));
+      }
+    }
+  }
+
+  async function requestFlowChecks() {
+      await navigate(390, 844, 1, 'book/?preview', false, true);
+      await waitFor(() => cdp.evaluate(() => !!document.querySelector('.rdp-day_button')));
+      if (!await cdp.evaluate(() => window.__uiRequestFixture === true)) throw new Error('Mailto adapter was not installed; refusing request test');
+      const choose = async day => {
+        await cdp.evaluate(value => [...document.querySelectorAll('.rdp-month .rdp-day_button')].find(e => e.textContent === String(value)).click(), day);
+        await sleep(80);
+      };
+      record('Request fixture: 7-day and booked-night gates remain disabled', await cdp.evaluate(() => {
+        const button = day => [...document.querySelectorAll('.rdp-month .rdp-day_button')].find(e => e.textContent === String(day));
+        return button(19).disabled && !button(20).disabled && button(28).disabled && button(29).disabled;
+      }));
+      await choose(23);
+      await choose(25);
+      await waitFor(() => cdp.evaluate(() => !!document.querySelector('.quote')));
+      record('Request fixture: selected stay and guest limit', await cdp.evaluate(() => document.querySelector('#field-guests').options.length === 6 && document.querySelector('.calendar-status').textContent.includes('2 nights')));
+      await cdp.evaluate(() => document.querySelector('.request-form').requestSubmit());
+      await waitFor(() => cdp.evaluate(() => document.activeElement?.matches('.error-summary')));
+      record('Request fixture: validation announced and linked to invalid inputs', await cdp.evaluate(() => {
+        const links = [...document.querySelectorAll('.error-summary a')];
+        return document.querySelector('.error-summary').getAttribute('role') === 'alert' && links.length === 9 && links.every(a => document.querySelector(a.hash)?.getAttribute('aria-invalid') === 'true');
+      }));
+      await cdp.evaluate(() => {
+        const values = { name: 'Test Guest', email: 'guest@example.invalid', phone: '2025550100', arrivalTime: 'Evening', purpose: 'Vacation or getaway' };
+        for (const [id, value] of Object.entries(values)) {
+          const input = document.querySelector(`#field-${id}`);
+          const prototype = input.tagName === 'SELECT' ? window.HTMLSelectElement.prototype : window.HTMLInputElement.prototype;
+          Object.getOwnPropertyDescriptor(prototype, 'value').set.call(input, value);
+          input.dispatchEvent(new Event(input.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
+        }
+        document.querySelectorAll('.ack-list input').forEach(input => input.click());
+      });
+      await waitFor(() => cdp.evaluate(() => !document.querySelector('.error-summary')));
+      await cdp.evaluate(() => document.querySelector('.request-form').requestSubmit());
+      await waitFor(() => cdp.evaluate(() => document.activeElement?.matches('.request-sent')));
+      record('Request fixture: confirmation receives focus; mailto includes stay and agreements', await cdp.evaluate(() => {
+        const href = new URL(window.__uiMailto);
+        const body = href.searchParams.get('body');
+        return href.protocol === 'mailto:' && href.pathname === 'requests@example.invalid' && body.includes('Check-in: 2027-01-23') && body.includes('Checkout: 2027-01-25 (2 nights)') && body.includes('I have read and agree') && document.querySelector('.request-sent').textContent.includes('sent only when you press send');
+      }));
+      await cdp.evaluate(() => document.querySelector('.sent-actions button').click());
+      await waitFor(() => cdp.evaluate(() => document.querySelector('.sent-actions button').textContent === 'Copied'));
+      record('Request fixture: copy fallback includes addressee and request', await cdp.evaluate(() => window.__uiClipboard.includes('To: requests@example.invalid') && window.__uiClipboard.includes('Check-in: 2027-01-23')));
+      await cdp.evaluate(() => {
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText: () => Promise.reject(new Error('Test denial')) } });
+        document.querySelector('.sent-actions button').click();
+      });
+      await waitFor(() => cdp.evaluate(() => !!document.querySelector('.request-sent [role="alert"]')));
+      record('Request fixture: failed copy is announced with manual selection', await cdp.evaluate(() => {
+        const input = document.querySelector('#sent-body');
+        return document.activeElement === input && input.selectionStart === 0 && input.selectionEnd === input.value.length;
+      }));
+      await cdp.evaluate(() => document.querySelector('.sent-actions .text-button').click());
+      await waitFor(() => cdp.evaluate(() => !!document.querySelector('.request-form')));
+      record('Request fixture: editing retains details without browser storage', await cdp.evaluate(() => document.querySelector('#field-name').value === 'Test Guest' && localStorage.length === 0 && sessionStorage.length === 0));
+  }
+  for (const width of [390, 1440]) {
+    for (const ready of [false, true]) {
+      await navigate(width, width === 390 ? 844 : 960, 1, '', ready);
+      await screenshot(`${baseline ? 'before' : 'after'}-home-${ready ? 'enabled-fixture' : 'disabled'}-${width}`);
+      if (!baseline) record(`Home ${width}: ${ready ? 'ready fixture' : 'disabled'} primary booking path`, await cdp.evaluate(expected => {
+        const link = document.querySelector('.hero-booking');
+        return expected ? link.pathname.endsWith('/book/') && !!document.querySelector('.hero-actions a[href*="airbnb.com"]') : link.hostname === 'www.airbnb.com';
+      }, ready));
+    }
+    await navigate(width, 960, 1, 'policies/house-rules/');
+    await screenshot(`${baseline ? 'before' : 'after'}-policy-${width}`);
+    if (!baseline) record(`Policy ${width}: contents anchors and draft preserved`, await cdp.evaluate(() => {
+      const links = [...document.querySelectorAll('.policy-toc a')];
+      return links.length > 0 && links.every(a => document.querySelector(a.hash)) && !!document.querySelector('.draft-banner') && __check.overflow().excess <= 1;
+    }));
+  }
+  if (!baseline) await requestFlowChecks();
 }
 
 async function viewportChecks(width, height, label, scale = 1) {
@@ -540,8 +711,12 @@ async function axeAudit() {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     source = await response.text();
   } catch (error) { skip('axe-core audit', `Optional CDN unavailable: ${error.message}`); return; }
-  for (const state of ['mobile', 'desktop', 'expanded-disclosures', 'modal']) {
-    await navigate(state === 'desktop' ? 1440 : 390, state === 'desktop' ? 900 : 844);
+  const states = args.includes('--ui-only') ? ['book-mobile', 'book-desktop', 'policy', 'home-ready'] : ['mobile', 'desktop', 'expanded-disclosures', 'modal'];
+  for (const state of states) {
+    const desktop = state.includes('desktop');
+    const path = state.startsWith('book') ? 'book/?preview' : state === 'policy' ? 'policies/house-rules/' : '';
+    await navigate(desktop ? 1440 : 390, desktop ? 900 : 844, 1, path, state === 'home-ready');
+    if (state.startsWith('book')) await waitFor(() => cdp.evaluate(() => !!document.querySelector('.rdp-day_button')));
     if (state === 'expanded-disclosures') {
       for (const selector of ['.owner-note summary', '.more-reviews summary', ...Array.from({ length: 5 }, (_, i) => `.faq-list details:nth-child(${i + 1}) summary`)]) {
         await tabTo(selector); await key('Enter');
@@ -578,6 +753,10 @@ try {
   report.metrics.browser = await (await fetch(`${endpoint}/json/version`)).json();
   const targets = await (await fetch(`${endpoint}/json/list`)).json();
   pageId = targets.find(t => t.type === 'page')?.id;
+  if (args.includes('--ui-only')) {
+    await scenario('Booking and policy UI', bookingUiChecks);
+    if (!args.includes('--baseline')) await scenario('Booking/policy axe audit', axeAudit);
+  } else {
   const viewports = [[320, 568], [375, 667], [390, 844], [768, 1024], [1024, 768], [1440, 900], [1920, 1080], [568, 320], [667, 375], [844, 390], [1024, 375]];
   for (const [width, height] of viewports) await scenario(`viewport ${width}x${height}`, () => viewportChecks(width, height, `${width}x${height}`));
   for (const [width, height] of [[720, 450], [512, 384]]) await scenario(`200% reflow ${width}x${height}`, () => viewportChecks(width, height, `reflow-200-${width}x${height}`, 2));
@@ -588,6 +767,7 @@ try {
   await scenario('FAQ keyboard checks', faqChecks);
   await scenario('Reduced motion checks', reducedMotion);
   await scenario('axe audit', axeAudit);
+  }
   record('Runtime: no uncaught exceptions/console errors', runtimeErrors.length === 0, { errors: runtimeErrors });
   const badResponses = responses.filter(r => r.status >= 400);
   record('Network: no failed requests or HTTP errors', !networkErrors.length && !badResponses.length, { networkErrors, badResponses });

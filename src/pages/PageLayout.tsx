@@ -16,7 +16,7 @@ export default function PageLayout({ children }: { children: ReactNode }) {
             <Waves size={30} strokeWidth={1.4} aria-hidden="true" />
             <span>{property.shortName}<small>By The Bay</small></span>
           </Link>
-          <Link className="page-back-link" to="/"><ArrowLeft size={18} aria-hidden="true" />Back to the home</Link>
+          <Link className="page-back-link" to="/"><ArrowLeft size={18} aria-hidden="true" />The home</Link>
         </div>
       </header>
       <main id="main-content" tabIndex={-1} className="subpage">{children}</main>
@@ -24,7 +24,7 @@ export default function PageLayout({ children }: { children: ReactNode }) {
         <div className="shell footer-main">
           <div><p>© {new Date().getFullYear()} {property.name}</p></div>
           <nav aria-label="Booking and policies">
-            <Link to={`/${pageRoutes.book.path}`}>Book direct</Link>
+            <Link to={`/${pageRoutes.book.path}`}>Request to book</Link>
             {policyRouteKeys.map((key) => <Link key={key} to={`/${pageRoutes[key].path}`}>{policies[key].title}</Link>)}
           </nav>
         </div>

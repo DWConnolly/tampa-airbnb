@@ -36,7 +36,7 @@ function useCalendar(): LoadState {
 }
 
 function useWideLayout() {
-  const query = '(min-width: 900px)';
+  const query = '(min-width: 1200px)';
   const [wide, setWide] = useState(() => window.matchMedia(query).matches);
   useEffect(() => {
     const media = window.matchMedia(query);
@@ -62,8 +62,9 @@ export default function BookPage() {
     <PageLayout>
       <section className="shell section book-page" aria-labelledby="book-title">
         <p className="eyebrow">Request to book direct</p>
-        <h1 id="book-title">Choose your dates.</h1>
-        <p className="book-lede">Direct stays at {property.name} are for check-in <strong>more than 7 days from today</strong>. Send a request here; the host reviews it and replies by email with a secure Stripe invoice. <strong>Nothing is charged on this website.</strong> Arriving sooner? <OtaLinks prefix="Please" /></p>
+        <h1 id="book-title">A little closer to Tampa.</h1>
+        <p className="book-lede">Your stay at {property.name} starts with a request. Choose your dates, share a few details, and the host will review it. <strong>No payment now.</strong> If accepted, you’ll receive an emailed Stripe invoice.</p>
+        <p className="book-arrival-note">Arriving within 7 days? <OtaLinks prefix="Please" /></p>
         {state.status === 'loading' && <p role="status" className="small-note">Loading availability…</p>}
         {state.status === 'error' && (
           <div className="notice" role="alert">
@@ -99,7 +100,6 @@ function BookingForm({ calendar }: { calendar: CalendarDocument }) {
   const [showErrors, setShowErrors] = useState(false);
   const [sent, setSent] = useState<Sent | null>(null);
   const errorSummary = useRef<HTMLDivElement>(null);
-  const sentPanel = useRef<HTMLDivElement>(null);
 
   const today = todayInTimeZone(calendar.timeZone);
   const earliest = earliestDirectCheckIn(today, rules);
@@ -136,8 +136,6 @@ function BookingForm({ calendar }: { calendar: CalendarDocument }) {
   const update = <K extends keyof GuestDetails>(key: K, value: GuestDetails[K]) => setDetails((current) => ({ ...current, [key]: value }));
   const describedBy = (key: RequestField) => (visibleErrors[key] ? `${key}-error` : undefined);
 
-  useEffect(() => { if (sent) sentPanel.current?.focus(); }, [sent]);
-
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!canRequest || !stay || stayErrors.length) return;
@@ -168,6 +166,11 @@ function BookingForm({ calendar }: { calendar: CalendarDocument }) {
 
   return (
     <>
+      <nav className="booking-steps" aria-label="Your booking request">
+        <a href="#choose-dates"><span aria-hidden="true">01</span>Choose dates</a>
+        <a href="#request-details"><span aria-hidden="true">02</span>Your details &amp; house rules</a>
+        <span className="steps-finish">Then, send your request</span>
+      </nav>
       {!booking.open && (
         <div className="notice" role="note">
           <p><strong>Direct booking requests are not open yet.</strong> You can view availability here, but requests open only after the host finishes setup. To book now, <a className="inline-link" href={externalLinks.airbnbListing}>use Airbnb</a>.</p>
@@ -175,9 +178,13 @@ function BookingForm({ calendar }: { calendar: CalendarDocument }) {
       )}
       {staleSources.length > 0 && <p className="small-note">Some calendar sources could not be refreshed at the last update, so availability may be out of date.</p>}
       {calendar.generatedAt && <p className="small-note">Availability last updated {new Date(calendar.generatedAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: calendar.timeZone })} Tampa time. The host confirms availability before accepting any request.</p>}
-      <form className="request-form" onSubmit={submit} noValidate aria-labelledby="book-title">
-        <div className="book-grid">
-          <div className="calendar-card">
+      <form className="request-form book-grid" onSubmit={submit} noValidate aria-labelledby="book-title">
+          <section className="calendar-card" id="choose-dates" aria-labelledby="dates-title" tabIndex={-1}>
+            <div className="calendar-heading">
+              <p className="eyebrow">Step 01 / Your stay</p>
+              <h2 id="dates-title">Choose your dates.</h2>
+              <p className="small-note">Select check-in, then checkout. Minimum {rules.minNights} nights · maximum {rules.maxNights} nights.</p>
+            </div>
             <DayPicker
               mode="range"
               selected={selected}
@@ -197,31 +204,42 @@ function BookingForm({ calendar }: { calendar: CalendarDocument }) {
               footer={<p className="calendar-status">{status}</p>}
             />
             <ul className="calendar-legend" aria-label="Calendar key">
-              <li><span className="legend-swatch legend-booked" aria-hidden="true" />Booked</li>
+              <li><span className="legend-swatch legend-booked" aria-hidden="true" />Unavailable / booked</li>
               <li><span className="legend-swatch legend-soon" aria-hidden="true" /><span>Within 7 days: <OtaLinks /></span></li>
             </ul>
-          </div>
+            <div className="calendar-guests">
+              <label className="field" htmlFor="field-guests">
+                <span>Guests</span>
+                <select id="field-guests" value={guests} onChange={(event) => setGuests(Number(event.target.value))}>
+                  {Array.from({ length: rules.maxGuests }, (_, index) => index + 1).map((count) => <option key={count} value={count}>{count} {count === 1 ? 'guest' : 'guests'}</option>)}
+                </select>
+              </label>
+              <p className="small-note">Up to {rules.maxGuests} guests in total, including children.</p>
+            </div>
+            <a className="button dates-continue" href={quote ? '#request-details' : '#choose-dates'}>{quote ? 'Continue to your details' : 'Choose dates to get started'}</a>
+          </section>
 
-          <div className="quote-card">
+          <section className="quote-card" id="stay-estimate" aria-labelledby="quote-title">
+            <p className="eyebrow">Your Tampa Heights stay</p>
             <h2 id="quote-title">Your stay</h2>
             <dl className="stay-summary">
-              <div><dt>Check-in</dt><dd>{checkIn ? longDate(checkIn) : '—'}</dd></div>
-              <div><dt>Checkout</dt><dd>{checkOut ? longDate(checkOut) : '—'}</dd></div>
+              <div><dt>Check-in</dt><dd>{checkIn ? longDate(checkIn) : 'Choose a date'}</dd></div>
+              <div><dt>Checkout</dt><dd>{checkOut ? longDate(checkOut) : 'Choose a date'}</dd></div>
+              <div><dt>Nights</dt><dd>{quote ? quote.nightly.length : '—'}</dd></div>
+              <div><dt>Guests</dt><dd>{guests}</dd></div>
             </dl>
-            <label className="field">
-              <span>Guests (up to {rules.maxGuests}, including children)</span>
-              <select value={guests} onChange={(event) => setGuests(Number(event.target.value))}>
-                {Array.from({ length: rules.maxGuests }, (_, index) => index + 1).map((count) => <option key={count} value={count}>{count} {count === 1 ? 'guest' : 'guests'}</option>)}
-              </select>
-            </label>
-            <p className="small-note">Minimum stay {rules.minNights} nights · maximum {rules.maxNights} nights.</p>
+            {checkIn && <a className="text-link" href="#choose-dates">Change dates or guests</a>}
+            {!quote && <p className="quote-empty">A little planning, then a little escaping. Select your dates to see your stay summary{showQuote ? ' and estimated total' : ''}.</p>}
 
             {stayErrors.length > 0 && <ul className="form-errors" role="alert">{stayErrors.map((code) => <li key={code}>{stayErrorMessages[code]}</li>)}</ul>}
 
             {quote && showQuote && (
               <div className="quote" aria-live="polite">
                 {!booking.open && <p className="draft-banner">Preview only: placeholder rates and tax lines that the owner has not confirmed. Not an offer.</p>}
-                <table>
+                <p className="quote-total"><span>Estimated total</span><strong>{formatMoney(quote.total, quote.currency)}</strong></p>
+                <details className="quote-breakdown">
+                  <summary>Price breakdown</summary>
+                  <table>
                   <caption className="visually-hidden">Estimated price breakdown</caption>
                   <tbody>
                     {Object.entries(quote.nightly.reduce<Record<number, number>>((counts, night) => ({ ...counts, [night.amount]: (counts[night.amount] ?? 0) + 1 }), {})).map(([amount, count]) => (
@@ -230,24 +248,26 @@ function BookingForm({ calendar }: { calendar: CalendarDocument }) {
                     <tr><th scope="row">Cleaning fee</th><td>{formatMoney(quote.cleaning, quote.currency)}</td></tr>
                     {quote.taxes.map((tax) => <tr key={tax.id}><th scope="row">{tax.label} ({formatRate(tax.rate)})</th><td>{formatMoney(tax.amount, quote.currency)}</td></tr>)}
                   </tbody>
-                  <tfoot><tr><th scope="row">Estimated total</th><td>{formatMoney(quote.total, quote.currency)}</td></tr></tfoot>
-                </table>
+                  </table>
+                </details>
                 <p className="small-note">This is an estimate. The host confirms the final amount on the Stripe invoice before you pay.</p>
               </div>
             )}
-          </div>
-        </div>
+            <p className="summary-reassurance"><strong>No payment now.</strong> This is a request, not a confirmed booking. Dates are not held while the host reviews it.</p>
+          </section>
 
-        <section className="request-details" aria-labelledby="details-title">
-          <h2 id="details-title">Your details</h2>
+        <section className="request-details" id="request-details" aria-labelledby="details-title" tabIndex={-1}>
+          <div><p className="eyebrow">Step 02 / A few details</p><h2 id="details-title">Tell us about your stay.</h2></div>
           <p className="small-note">The host uses these to review your request. They go only into the email your own email app sends; this website does not save or send them.</p>
+          <p className="small-note">All fields are required unless marked optional.</p>
           {errorEntries.length > 0 && (
             <div className="error-summary" role="alert" tabIndex={-1} ref={errorSummary}>
               <p><strong>Please fix the following:</strong></p>
               <ul>{errorEntries.map(([key, message]) => <li key={key}><a href={`#field-${key}`}>{message}</a></li>)}</ul>
             </div>
           )}
-          <div className="field-grid">
+          <fieldset className="field-grid details-group">
+            <legend>Your contact details</legend>
             <label className="field" htmlFor="field-name">
               <span>Full name</span>
               <input id="field-name" autoComplete="name" value={details.name} onChange={(event) => update('name', event.target.value)} aria-invalid={!!visibleErrors.name} aria-describedby={describedBy('name')} />
@@ -263,6 +283,9 @@ function BookingForm({ calendar }: { calendar: CalendarDocument }) {
               <input id="field-phone" type="tel" autoComplete="tel" value={details.phone} onChange={(event) => update('phone', event.target.value)} aria-invalid={!!visibleErrors.phone} aria-describedby={describedBy('phone')} />
               <FieldError id="phone-error" message={visibleErrors.phone} />
             </label>
+          </fieldset>
+          <fieldset className="field-grid details-group">
+            <legend>A little about your visit</legend>
             <label className="field" htmlFor="field-arrivalTime">
               <span>Estimated arrival time</span>
               <input id="field-arrivalTime" placeholder="e.g. around 4 PM, driving" value={details.arrivalTime} onChange={(event) => update('arrivalTime', event.target.value)} aria-invalid={!!visibleErrors.arrivalTime} aria-describedby={describedBy('arrivalTime')} />
@@ -293,11 +316,12 @@ function BookingForm({ calendar }: { calendar: CalendarDocument }) {
               <textarea id="field-notes" rows={4} maxLength={NOTES_MAX} value={details.notes} onChange={(event) => update('notes', event.target.value)} aria-invalid={!!visibleErrors.notes} aria-describedby={describedBy('notes')} />
               <FieldError id="notes-error" message={visibleErrors.notes} />
             </label>
-          </div>
+          </fieldset>
         </section>
 
         <section className="request-details" aria-labelledby="agreements-title">
-          <h2 id="agreements-title">House rules and agreements</h2>
+          <h2 id="agreements-title">A shared understanding.</h2>
+          <p className="small-note">Read the house rules, then confirm all four acknowledgements before sending your request.</p>
           <details className="rules-preview">
             <summary>Read the house rules</summary>
             <PolicySections sections={policies.houseRules.sections} headingLevel={3} />
@@ -314,11 +338,22 @@ function BookingForm({ calendar }: { calendar: CalendarDocument }) {
               </div>
             ))}
           </fieldset>
-          <button className="button pay-button" type="submit" disabled={!canRequest || !quote}>
-            {canRequest ? 'Send booking request by email' : 'Direct requests not open yet'}
-          </button>
-          <p className="small-note">Submitting opens a prefilled email in your email app; review it and press send. Nothing is charged on this website. See <Link className="inline-link" to={`/${pageRoutes.privacy.path}`}>privacy</Link>.</p>
+          <div className="request-submit" id="send-request">
+            <p><strong>Ready when you are.</strong> The next step opens your email app, not a payment screen.</p>
+            <button className="button pay-button" type="submit" disabled={!canRequest || !quote}>
+              {canRequest ? 'Send booking request by email' : 'Direct requests not open yet'}
+            </button>
+            {!quote && canRequest && <p className="small-note">Choose check-in and checkout dates to send a request.</p>}
+            <p className="small-note">Review the prefilled email and press send there. If accepted, the host emails a Stripe invoice; your booking is confirmed only when it is paid. See <Link className="inline-link" to={`/${pageRoutes.privacy.path}`}>privacy</Link>.</p>
+          </div>
         </section>
+        <div className="request-mobile-bar" role="group" aria-label="Stay summary and next step">
+          <a href="#stay-estimate" className="mobile-estimate">
+            <strong>{quote && showQuote ? formatMoney(quote.total, quote.currency) : 'Your stay'}</strong>
+            <span>{quote ? `${quote.nightly.length} nights · ${guests} guests${showQuote ? booking.open ? ' · estimate' : ' · preview only' : ''}` : 'Choose your dates'}</span>
+          </a>
+          <a className="button" href={quote ? '#request-details' : '#choose-dates'}>{quote ? 'Your details' : 'Choose dates'}</a>
+        </div>
       </form>
     </>
   );
@@ -326,16 +361,34 @@ function BookingForm({ calendar }: { calendar: CalendarDocument }) {
 
 function RequestSent({ sent, onEdit }: { sent: Sent; onEdit: () => void }) {
   const [copied, setCopied] = useState(false);
-  const copy = () => navigator.clipboard?.writeText(`To: ${sent.to}\nSubject: ${sent.subject}\n\n${sent.body.replace(/\r\n/g, '\n')}`).then(() => setCopied(true), () => setCopied(false));
+  const [copyError, setCopyError] = useState(false);
+  const panel = useRef<HTMLDivElement>(null);
+  const requestText = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => { panel.current?.focus(); }, []);
+  const copy = async () => {
+    setCopied(false);
+    setCopyError(false);
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(`To: ${sent.to}\nSubject: ${sent.subject}\n\n${sent.body.replace(/\r\n/g, '\n')}`);
+      setCopied(true);
+    } catch {
+      setCopyError(true);
+      requestText.current?.focus();
+      requestText.current?.select();
+    }
+  };
   return (
-    <div className="request-sent" tabIndex={-1} aria-labelledby="sent-title" role="region">
-      <h2 id="sent-title">Check your email app to send request {sent.reference}</h2>
+    <div className="request-sent" ref={panel} tabIndex={-1} aria-labelledby="sent-title" role="region">
+      <p className="eyebrow">One last step / Send your email</p>
+      <h2 id="sent-title">Your request is ready to send.</h2>
+      <p className="request-reference">Reference: {sent.reference}</p>
       <p>Your email app should have opened a message to <a className="inline-link" href={`mailto:${sent.to}`}>{sent.to}</a>. <strong>Your request is sent only when you press send there.</strong></p>
       <p>The host reviews requests and replies by email. If accepted, you receive a Stripe invoice; the booking is confirmed when it is paid. Your dates are not held until then.</p>
       <p className="small-note">No email app opened? Copy the request below and email it to {sent.to} yourself.</p>
       <label className="field" htmlFor="sent-body">
         <span>Request text</span>
-        <textarea id="sent-body" readOnly rows={12} value={`Subject: ${sent.subject}\n\n${sent.body.replace(/\r\n/g, '\n')}`} />
+        <textarea id="sent-body" ref={requestText} readOnly rows={12} value={`To: ${sent.to}\nSubject: ${sent.subject}\n\n${sent.body.replace(/\r\n/g, '\n')}`} />
       </label>
       <div className="sent-actions">
         <button className="button" type="button" onClick={copy}>{copied ? 'Copied' : 'Copy request'}</button>
@@ -343,6 +396,7 @@ function RequestSent({ sent, onEdit }: { sent: Sent; onEdit: () => void }) {
         <button className="text-button" type="button" onClick={onEdit}>Edit request</button>
       </div>
       <p role="status" className="visually-hidden">{copied ? 'Request copied to clipboard.' : ''}</p>
+      {copyError && <p className="field-error" role="alert">Automatic copying was unavailable. The request text is selected above; copy it manually and paste it into an email to {sent.to}.</p>}
     </div>
   );
 }

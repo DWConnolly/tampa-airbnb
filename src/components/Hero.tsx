@@ -1,6 +1,7 @@
 import { ArrowDown } from 'lucide-react';
 import { galleryImages, property, siteCopy } from '../config/siteConfig';
-import BookingLink from './BookingLink';
+import { directBookingReady } from '../config/booking';
+import BookingLink, { PrimaryBookingLink } from './BookingLink';
 import PropertyImage from './PropertyImage';
 
 export default function Hero() {
@@ -16,7 +17,8 @@ export default function Hero() {
           <h1 id="hero-title">{siteCopy.hero.headline}{' '}<em>{siteCopy.hero.headlineAccent}</em></h1>
           <p className="hero-description">{siteCopy.hero.description}</p>
           <div className="hero-actions">
-            <BookingLink className="button hero-booking" />
+            <PrimaryBookingLink className="button hero-booking" />
+            {directBookingReady && <BookingLink className="text-link">Prefer Airbnb?</BookingLink>}
             <a className="text-link explore-link" href="#the-home">{siteCopy.hero.explore}<ArrowDown size={16} aria-hidden="true" /></a>
           </div>
         </div>
@@ -30,7 +32,7 @@ export default function Hero() {
         <ul className="property-facts" aria-label="Property at a glance">
           {facts.map(([value, label]) => <li key={label}><strong>{value}</strong>{' '}<span>{label}</span></li>)}
         </ul>
-        <p className="small-note">{siteCopy.hero.note}</p>
+        <p className="small-note">{directBookingReady ? 'A request, not a reservation. No payment on this website.' : siteCopy.hero.note}</p>
       </div>
     </section>
   );
