@@ -10,6 +10,7 @@ for (const base of ['/', '/tampa-airbnb/', '/coastal-preview/']) {
     server: { middlewareMode: true, watch: null },
   });
   try {
+    const { pageRoutes } = await server.ssrLoadModule('/src/config/routes.ts');
     const { assetUrl, seoConfig, galleryImages, photography, property } = await server.ssrLoadModule('/src/config/siteConfig.ts');
     assert.deepEqual(galleryImages.slice(0, 5).map(photo => photo.id), photography.previewIds);
     assert.equal(new Set(galleryImages.map(photo => photo.id)).size, 57);
@@ -32,7 +33,18 @@ for (const base of ['/', '/tampa-airbnb/', '/coastal-preview/']) {
     assert.ok(html.includes(`href="${base}favicon.svg"`));
     assert.ok(html.includes(`src="${base}assets/`));
     assert.ok(!html.includes('aggregateRating'));
-    console.log(`PASS ${base}: selected front-house hero, asset helper, title, canonical, social image, favicon, and bundle paths`);
+
+    const { routeHtml } = await server.ssrLoadModule('/scripts/routeHtml.ts');
+    for (const route of Object.values(pageRoutes)) {
+      const page = routeHtml(html, base, route);
+      const routeUrl = new URL(route.path, pageUrl).href;
+      assert.ok(page.includes(`<title>${route.title}</title>`));
+      assert.ok(page.includes(`rel="canonical" href="${routeUrl}"`));
+      assert.ok(page.includes(`property="og:url" content="${routeUrl}"`));
+      assert.ok(page.includes(`src="${base}assets/`));
+      assert.equal(page.includes('name="robots" content="noindex"'), Boolean(route.noindex));
+    }
+    console.log(`PASS ${base}: selected front-house hero, asset helper, title, canonical, social image, favicon, bundle paths, and ${Object.keys(pageRoutes).length} route pages`);
   } finally {
     await server.close();
   }

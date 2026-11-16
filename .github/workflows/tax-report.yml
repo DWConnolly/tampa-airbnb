@@ -1,0 +1,38 @@
+# Monthly direct-booking tax worksheet from data/direct-bookings.json (estimates
+# from current rates), uploaded as a workflow artifact. Owner/accountant
+# reconciles it with the Stripe invoices and confirms the filing basis.
+name: Monthly tax report
+
+on:
+  schedule:
+    - cron: '0 13 2 * *'
+  workflow_dispatch:
+    inputs:
+      month:
+        description: 'Month (YYYY-MM); blank = previous month'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build report
+        id: report
+        env:
+          MONTH: ${{ inputs.month }}
+        run: |
+          node scripts/sync/tax-report.ts "$MONTH" tax-report.csv
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        if: steps.report.outputs.ready == 'true'
+        with:
+          name: direct-booking-tax-report
+          path: tax-report.csv
+          retention-days: 400

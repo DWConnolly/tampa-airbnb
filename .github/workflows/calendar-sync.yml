@@ -1,0 +1,116 @@
+# Bliss Sync: event-driven calendar sync with a daily 5:00 AM Tampa-time fallback.
+# Rebuilds public/calendar.json + public/direct.ics from Airbnb/Vrbo iCal,
+# owner-approved direct bookings and owner blocks, then redeploys the site.
+name: Calendar sync
+
+on:
+  # Event: the owner approves a request (data/direct-bookings.json) or edits
+  # blocks/rates. Commits made by this workflow use GITHUB_TOKEN and never re-trigger it.
+  push:
+    branches: ['main']
+    paths: ['data/**']
+  # Event: manual "Run workflow" button (also in the GitHub mobile app), e.g.
+  # right after an Airbnb/Vrbo booking email arrives.
+  workflow_dispatch:
+    inputs:
+      accept_empty_feeds:
+        description: 'Accept an OTA feed that is now empty (all stays cancelled)'
+        type: boolean
+        default: false
+  # Fallback: picks up Airbnb/Vrbo calendar changes, which cannot trigger
+  # GitHub directly without a hosted service. Evaluated in America/New_York so
+  # it stays at 5 AM local across daylight-saving changes.
+  schedule:
+    - cron: '0 5 * * *'
+      timezone: 'America/New_York'
+
+permissions:
+  contents: write
+  issues: write
+  actions: write
+
+concurrency:
+  group: calendar-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    # Second line of defence against loops if a bot push ever touches data/.
+    if: github.event_name != 'push' || github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Log local run time
+        run: TZ=America/New_York date '+Running at %Y-%m-%d %H:%M %Z (Tampa)'
+
+      - name: Sync calendar
+        id: sync
+        env:
+          AIRBNB_ICAL_URL: ${{ secrets.AIRBNB_ICAL_URL }}
+          VRBO_ICAL_URL: ${{ secrets.VRBO_ICAL_URL }}
+          ACCEPT_EMPTY_FEEDS: ${{ inputs.accept_empty_feeds || 'false' }}
+          ALERTS_FILE: ${{ runner.temp }}/alerts.md
+        run: node scripts/sync/calendar-sync.ts
+
+      - name: Commit calendar
+        id: commit
+        run: |
+          git add public/calendar.json public/direct.ics
+          if git diff --cached --quiet; then
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "Calendar sync (${{ github.event_name }})"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main && git push origin HEAD:main && break
+            sleep 5
+          done
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Redeploy site
+        # Pushes made with GITHUB_TOKEN do not trigger deploy.yml, so dispatch it.
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --ref main
+
+      - name: Open or update alert issue
+        if: steps.sync.outputs.alerts == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title='Bliss Sync needs attention'
+          body="$(cat "$RUNNER_TEMP/alerts.md")
+
+          Run: $RUN_URL"
+          gh label create bliss-sync --color D93F0B --description 'Calendar sync alerts' 2>/dev/null || true
+          number=$(gh issue list --label bliss-sync --state open --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --title "$title" --label bliss-sync --body "$body"
+          fi
+
+      - name: Report sync failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create bliss-sync --color D93F0B --description 'Calendar sync alerts' 2>/dev/null || true
+          number=$(gh issue list --label bliss-sync --state open --json number --jq '.[0].number')
+          body="Calendar sync failed; the last published calendar was kept. See $RUN_URL"
+          if [ -n "$number" ]; then gh issue comment "$number" --body "$body"; else gh issue create --title 'Bliss Sync needs attention' --label bliss-sync --body "$body"; fi

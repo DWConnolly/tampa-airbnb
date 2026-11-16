@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "generatedAt": "2026-11-16T00:37:09.459Z",
+  "propertyId": "blue-bliss-by-the-bay",
+  "timeZone": "America/New_York",
+  "sources": {
+    "direct": "ok",
+    "owner": "ok",
+    "airbnb": "not-configured",
+    "vrbo": "not-configured"
+  },
+  "blocked": [],
+  "booking": {
+    "open": false,
+    "problems": [
+      "Direct booking is not enabled in data/booking-config.json.",
+      "No booking-request email address (directBooking.requestEmail) is configured.",
+      "Owner has not confirmed: rates.",
+      "Owner has not confirmed: taxes.",
+      "Owner has not confirmed: policies.",
+      "Owner has not confirmed: licensesAndRegistrations.",
+      "Owner has not confirmed: insurance.",
+      "Owner has not confirmed: requestInboxAndInvoicing.",
+      "The Airbnb calendar feed (AIRBNB_ICAL_URL) is not configured."
+    ],
+    "requestEmail": "",
+    "termsVersion": "draft-2026-11-15",
+    "rules": {
+      "minLeadDays": 7,
+      "minNights": 2,
+      "maxNights": 28,
+      "maxGuests": 6,
+      "bookingHorizonDays": 365
+    },
+    "pricing": {
+      "_readme": "PLACEHOLDER rates and tax rates for previews only. The owner must set real rates and confirm every tax (rate, base, and whether it applies to the cleaning fee) with the Florida Department of Revenue and the Hillsborough County Tax Collector before setting ownerConfirmations.rates/taxes to true. These figures drive the ESTIMATE shown to guests; the owner sends the final Stripe invoice by email. Seasons are inclusive of their first and last night. weekendNights: 0 = Sunday ... 6 = Saturday.",
+      "currency": "usd",
+      "nightlyRate": 250,
+      "weekendRate": 295,
+      "weekendNights": [
+        5,
+        6
+      ],
+      "seasons": [],
+      "cleaningFee": 150,
+      "taxes": [
+        {
+          "id": "fl_sales",
+          "label": "Florida sales tax (owner to confirm)",
+          "rate": 0.06,
+          "appliesTo": [
+            "lodging",
+            "cleaning"
+          ]
+        },
+        {
+          "id": "county_surtax",
+          "label": "Hillsborough County discretionary sales surtax (owner to confirm)",
+          "rate": 0.015,
+          "appliesTo": [
+            "lodging",
+            "cleaning"
+          ]
+        },
+        {
+          "id": "county_tdt",
+          "label": "Hillsborough County tourist development tax (owner to confirm)",
+          "rate": 0.06,
+          "appliesTo": [
+            "lodging",
+            "cleaning"
+          ]
+        }
+      ]
+    }
+  }
+}

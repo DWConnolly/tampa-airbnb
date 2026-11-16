@@ -1,6 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import path from 'node:path'
+import { pageRoutes } from './src/config/routes'
+import { routeHtml } from './scripts/routeHtml'
 import { property, seoConfig } from './src/config/siteConfig'
 
 let resolvedBase = '/tampa-airbnb/'
@@ -40,5 +44,14 @@ export default defineConfig({
       },
     },
     configResolved(config) { resolvedBase = config.base },
+    async writeBundle(options) {
+      const outDir = options.dir!
+      const html = await readFile(path.join(outDir, 'index.html'), 'utf8')
+      for (const route of Object.values(pageRoutes)) {
+        const target = path.join(outDir, route.path, 'index.html')
+        await mkdir(path.dirname(target), { recursive: true })
+        await writeFile(target, routeHtml(html, resolvedBase, route))
+      }
+    },
   }],
 })

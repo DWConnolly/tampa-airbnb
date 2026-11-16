@@ -1,4 +1,7 @@
 import { galleryImages, photography, property, siteCopy } from '../config/siteConfig';
+import { Link } from 'react-router-dom';
+import { directBookingReady } from '../config/booking';
+import { pageRoutes } from '../config/routes';
 import BookingLink from './BookingLink';
 import PropertyImage from './PropertyImage';
 
@@ -7,7 +10,7 @@ export default function BookCTA() {
   return (
     <section className="booking-section section" aria-labelledby="booking-title">
       <div className="shell booking-layout">
-        <div className="booking-inner"><p className="eyebrow">{siteCopy.booking.eyebrow}</p><h2 id="booking-title">{siteCopy.booking.title}{' '}<em>{siteCopy.booking.titleAccent}</em></h2><p>{siteCopy.booking.description}</p><BookingLink className="button" /><p className="small-note">{siteCopy.booking.note}</p></div>
+        <div className="booking-inner"><p className="eyebrow">{siteCopy.booking.eyebrow}</p><h2 id="booking-title">{siteCopy.booking.title}{' '}<em>{siteCopy.booking.titleAccent}</em></h2><p>{siteCopy.booking.description}</p><BookingLink className="button" /><p className="small-note">{siteCopy.booking.note}</p>{directBookingReady && <p className="direct-booking-cta"><Link className="text-link" to={`/${pageRoutes.book.path}`}>{siteCopy.directBooking.link}</Link><span className="small-note">{siteCopy.directBooking.note}</span></p>}</div>
         <figure className="booking-photo"><PropertyImage image={photo} sizes="(min-width: 1440px) 500px, (min-width: 900px) 40vw, 100vw" /><figcaption className="journal-caption">{siteCopy.booking.caption}</figcaption></figure>
       </div>
     </section>

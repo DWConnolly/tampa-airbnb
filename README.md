@@ -1,17 +1,18 @@
 # Blue Bliss By The Bay
 
-A mobile-first vacation-home website built with React, TypeScript, Vite, and Tailwind CSS 4. All reservation links lead to the supplied Airbnb listing; this site does not collect payments, calculate prices, or promise availability.
+A mobile-first vacation-home website built with React, TypeScript, Vite, and Tailwind CSS 4. Reservation links lead to the supplied Airbnb listing. **Bliss Sync** (below) adds an optional in-house direct-booking path: a shared availability calendar and a request-to-book form; the owner follows up by email with a Stripe invoice. It stays **switched off** (`directBooking.enabled: false`) until the owner completes the setup checklist; until then the public home page is unchanged and every booking happens on Airbnb.
 
 ## Develop and validate
 
-- `npm install` installs the existing stack. No new application dependencies were added for the redesign.
+- `npm install` installs the stack. Bliss Sync added one application dependency, `react-day-picker`, and now uses the existing `react-router-dom` for the booking and policy pages.
 - `npm run dev` starts development at the configured Vite base path.
 - `npm run build` runs TypeScript checks and creates the production output.
 - `npm run lint` runs ESLint.
+- `npm test` runs the Node test runner over the Bliss Sync booking logic (iCal parse/merge, overlap detection, the 7-day rule, pricing estimates, request validation and email, tax CSV). Requires Node 22.18+ (TypeScript type stripping).
 - The [base-path checks](scripts/base-check.mjs) verify development image helpers and generated production metadata for root, GitHub Pages, and alternate subpath deployments without overwriting the production build. They run as part of the VS Code validation task.
 - `npm run preview` serves the production build.
 - `node scripts/browser-check.mjs` runs the dependency-free headless Chrome regression checks after a build. Requires Node 22+ and Chrome; set `CHROME_PATH` on non-macOS systems. It starts an isolated browser and a local preview if necessary, cleans them up, and prints a temporary report/artifact directory. Optional axe-core is fetched from a pinned CDN version for testing only; use `--no-axe` for offline checks. No Airbnb booking is submitted.
-- The equivalent validation, preview, and browser-check tasks are available in [the VS Code tasks](.vscode/tasks.json).
+- The equivalent validation (tests, build, lint, base-path checks), preview, and browser-check tasks are available in [the VS Code tasks](.vscode/tasks.json).
 
 ## Content and trust
 
@@ -51,6 +52,86 @@ To add a photo:
 5. Confirm every source in both development and the production preview. Below-fold gallery images are lazy-loaded and dimensioned; the hero is loaded eagerly with high priority. The full image is available in a native modal dialog with Escape, focus restoration, and background isolation.
 
 Neighborhood photos, if supplied later, must be separately configured/rendered in the neighborhood section, licensed for use, and captioned as destinations **not at the property**. Do not add stock hotel, pool, beach, or restaurant imagery to suggest amenities.
+
+## Bliss Sync: direct booking requests
+
+In-house calendar sync and **request-to-book** with **no server of any kind**: no PMS, no SaaS, no Worker, and no payment on the website. The site stays static on GitHub Pages. Guests pick available dates and send a booking request by email; the owner reviews it and replies with a **Stripe invoice** sent manually from the Stripe Dashboard. Nobody is charged until the owner accepts and the guest pays that invoice.
+
+```mermaid
+flowchart LR
+  Guest -->|available dates, details, agreements| Site[GitHub Pages site /book/]
+  Site -->|prefilled mailto: from the guest's email app| Owner[Owner inbox]
+  Owner -->|review, check Airbnb/Vrbo| Invoice[Stripe invoice by email]
+  Invoice -->|paid| Record[Owner adds dates to data/direct-bookings.json]
+  Record -->|push to main on data/**| Sync[calendar-sync workflow]
+  Cron[Daily 5 AM ET fallback / manual run] --> Sync
+  Sync -->|iCal fetch| Feeds[Airbnb + Vrbo iCal]
+  Sync -->|commit calendar.json + direct.ics, run deploy| Site
+  Site -.->|direct.ics imported| OTAcal[Airbnb / Vrbo calendars]
+```
+
+**Rules (enforced in the site calendar):** booked nights and check-ins within 7 days (`rules.minLeadDays`) simply cannot be selected. Shorter-notice stays go to Airbnb (and Vrbo once `externalLinks.vrboListing` is set). The calendar also enforces the minimum/maximum stay and booking horizon, and the guest picker allows at most 6 guests. The owner reviews every request before invoicing, which is the real check.
+
+| Piece | Where | What it does |
+| --- | --- | --- |
+| Booking logic | [shared/booking/](shared/booking) | Pure, unit-tested TypeScript shared by the site and the Actions scripts (dates, iCal, calendar merge/overlaps, rules, pricing estimate, request email, tax report). |
+| Owner data | [data/](data/README.md) | `booking-config.json` (rates incl. weekend/seasonal, cleaning fee, tax lines, rules, `directBooking.enabled` + `requestEmail`, owner confirmations), `owner-blocks.json`, `direct-bookings.json` (request reference, dates and status only; **no guest PII**). Edit by pull request or the GitHub web editor. Git history is the audit log. |
+| Calendar sync | [.github/workflows/calendar-sync.yml](.github/workflows/calendar-sync.yml), [scripts/sync/calendar-sync.ts](scripts/sync/calendar-sync.ts) | **Event-driven:** runs on every push to `main` that touches `data/**` (an approved booking, a block, a rate change) and on the manual **Run workflow** button (also in the GitHub mobile app). **Fallback:** daily at 05:00 `America/New_York` (the schedule's `timezone` option keeps it at 5 AM local across daylight-saving changes). A concurrency group serialises runs. It fetches the Airbnb/Vrbo iCal, merges direct bookings and owner blocks, writes [public/calendar.json](public/calendar.json) (blocked nights by source) and [public/direct.ics](public/direct.ics) (direct bookings + owner blocks for the OTAs to import), commits, and runs the Pages deploy. |
+| Guards | same | A failing or stale feed keeps the last good dates for that source. Overlapping bookings stay blocked (union) and are reported. Invalid data files fail the run without publishing. Each problem opens or comments on a GitHub issue labelled `bliss-sync`; requests close automatically (`booking.open: false`) while required feeds are stale. |
+| Site | `/book/`, `/policies/*` | Availability calendar, guests (max 6), estimated quote, guest details (name, email, phone, arrival time, purpose of stay, pets, notes), the house rules inline, and four required acknowledgements (house rules, cancellation policy, rental terms, "this is a request, not a booking"). Submitting opens a prefilled email to `directBooking.requestEmail` with a reference such as `BB-270107-K4P9`; a confirmation panel offers **Copy request** if no email app opens. Add `?preview` to `/book/` to see placeholder quotes before launch. |
+| Tax report | [.github/workflows/tax-report.yml](.github/workflows/tax-report.yml) | Monthly CSV of confirmed direct bookings (by check-in month) from `direct-bookings.json`, with an **estimated** lodging/cleaning/tax split from current rates. Reconcile it against the paid Stripe invoices before filing. Kept as a workflow artifact for 400 days. |
+
+**Why `mailto:`.** It is the only way to deliver a request from a static site without running or renting a service: form backends (Formspree, Google Forms, etc.) are hosted SaaS, and GitHub issues would publish guest details. The guest's own email app sends the request, the website stores nothing (no cookies, no local storage), and the owner gets a normal email to reply to. Downsides: it needs an email app on the guest's device (hence the copy fallback), and the request address is public, so use a dedicated alias.
+
+**Placeholder figures.** Nightly/weekend rates, cleaning fee and the three tax lines in `booking-config.json` (Florida sales tax, Hillsborough County discretionary surtax, Hillsborough County tourist development tax) are **placeholders, not verified legal rates**. Confirm them with Florida DOR / Hillsborough County (and a tax adviser), then set the matching `ownerConfirmations` flags. The site will not open requests while any confirmation is `false`. The guest sees an estimate; the Stripe invoice is the final price.
+
+**Policies.** Cancellation, house rules, rental terms and privacy pages ([src/config/policies.ts](src/config/policies.ts)) are drafts written for the request → invoice flow. Each shows a "draft" banner and lists "Owner to confirm" items until `ownerConfirmations.policies` is `true`. Bump `termsVersion` whenever terms change; the request email quotes the version the guest agreed to.
+
+### Approving a request (owner routine)
+
+1. Read the request email. Check the dates are still free on Airbnb/Vrbo and in `calendar.json` (requests do not hold dates).
+2. Reply to accept or decline. To accept, create a Stripe invoice in the Dashboard (line items from the estimate in the email, your confirmed taxes, a due date) and send it to the guest's email.
+3. When the invoice is paid, add `{ "id": "<reference from the email>", "checkIn": "YYYY-MM-DD", "checkOut": "YYYY-MM-DD", "status": "confirmed" }` to `data/direct-bookings.json` and commit to `main` (GitHub web editor is fine). That push runs the sync, which blocks the dates on the site and in `direct.ics`. To hold dates before payment, add an owner block instead.
+4. To cancel, set `"status": "cancelled"` and refund in Stripe per the cancellation policy.
+
+### Trade-offs of the serverless request flow
+
+- **No payment or hold on the site.** Dates stay open until the owner records the booking, so two guests can request the same dates; the owner decides. Nothing is charged automatically and no refunds happen automatically.
+- **Double-booking window with the OTAs.** Airbnb/Vrbo pick up `direct.ics` on their own import schedule, and Airbnb/Vrbo bookings reach the site calendar only on the daily 5 AM fallback or a manual run: GitHub cannot be triggered by an OTA or by email without a hosted relay, which this setup deliberately avoids. Run the workflow manually after an OTA booking email to shorten the window, and always check the OTAs before invoicing.
+- **Rules are enforced in the UI only.** A determined guest could email anything; the owner's review is the gate.
+- **`mailto:` depends on the guest's email app** (copy fallback provided); the request address is public.
+- **Estimates, not quotes.** The site figure and the tax report use current config rates; the Stripe invoice is authoritative.
+- **Scheduled runs can start late.** GitHub may delay scheduled workflows during busy periods. The schedule `timezone` option is in public preview; if it ever stops being honoured the run would happen at 05:00 UTC instead (01:00 or 00:00 Tampa time), which the "Log local run time" step makes visible.
+
+### Secrets (never in the site bundle or repo)
+
+- **GitHub Actions secrets:** `AIRBNB_ICAL_URL` (required), `VRBO_ICAL_URL` (optional until Vrbo is live). No Stripe key is needed: invoices are created by hand in the Stripe Dashboard.
+- `directBooking.requestEmail` is public by design (it is the `mailto:` address).
+- `npm run sync:calendar` runs the sync locally. With no secrets it produces an empty calendar with `booking.open: false`.
+
+### Turning direct requests on
+
+1. Finish the owner checklist below and set every `ownerConfirmations` flag in `data/booking-config.json`.
+2. Set `directBooking.requestEmail` to a dedicated inbox/alias and `directBooking.enabled: true`.
+3. Merge to `main`. The push runs the sync, rebuilds `calendar.json` and deploys. The home page then shows the "Request to book direct" link, footer policy links and the updated FAQ/SEO copy (all conditional on readiness in [src/config/booking.ts](src/config/booking.ts)).
+4. Add `…/tampa-airbnb/direct.ics` as an imported calendar in Airbnb (and Vrbo).
+5. Send a test request from a phone and a desktop, send yourself a test Stripe invoice, record the booking, and confirm the calendar, `direct.ics` and the alert issue behave as expected.
+
+### Owner prerequisites (not code)
+
+- [ ] Florida DBPR vacation-rental licence.
+- [ ] Florida DOR sales-tax registration (Airbnb may collect on its own bookings; direct bookings are the owner's responsibility).
+- [ ] Hillsborough County tourist development tax registration.
+- [ ] City of Tampa short-term-rental rules and any required registration or permits.
+- [ ] Short-term-rental / liability insurance that covers direct bookings.
+- [ ] Final cancellation policy, house rules, rental agreement and privacy notice (replace the drafts), including invoice due dates, deposits and how declined/overlapping requests are handled.
+- [ ] Confirmed nightly/weekend/seasonal rates, cleaning fee, minimum stay and the tax rates/lines to charge.
+- [ ] Dedicated booking-request inbox (`directBooking.requestEmail`) and a response-time commitment.
+- [ ] Stripe account (business details, payouts, statement descriptor) set up for **Invoicing**, with invoice templates showing the tax lines and registration numbers.
+- [ ] Airbnb calendar **export** URL (Actions secret) and **import** of `direct.ics`.
+- [ ] Vrbo listing, its iCal export URL (`VRBO_ICAL_URL`) and `externalLinks.vrboListing`.
+- [ ] The approval routine above, and watching the `bliss-sync` issue.
+- [ ] Custom domain (optional but recommended). Update `seoConfig.siteOrigin`.
 
 ## Deployment and social sharing
 
@@ -96,6 +177,7 @@ Neighborhood photos, if supplied later, must be separately configured/rendered i
 - Test VoiceOver/screen-reader navigation and the modal photo viewer. Automated audits do not establish full accessibility conformance.
 - Check the deployed subpath, favicon, all image variants, fragment links, and social previews.
 - Confirm the Airbnb destination and current facts/policies. No live booking or owner claim verification is part of the automated checks.
+- Before enabling Bliss Sync, complete the [owner prerequisites](#owner-prerequisites-not-code) and a test request plus a test Stripe invoice.
 - Review the imported photo collection and supply room-specific captions/alt descriptions. Recheck responsive crops after changing the preview selection.
 
 The Chrome script reports the checks it actually performs (viewport geometry, overflow, assets, focus/navigation/dialog behavior, reduced motion, and optional automated accessibility). Screenshots are artifacts, not proof of visual review; viewport reflow is not a substitute for real browser zoom or physical-device testing.

@@ -1,4 +1,6 @@
 // Property content lives here. Confirm flagged facts against the live Airbnb listing.
+import { directBookingReady, minLeadDays } from './booking';
+
 // Paths are relative to public/; the app resolves them using Vite's deployment base.
 export const assetUrl = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`;
 
@@ -38,6 +40,8 @@ export const trust = {
 
 export const externalLinks = {
   airbnbListing: 'https://www.airbnb.com/rooms/1211112487690698739',
+  // Add the public Vrbo listing URL once it is live; links appear on booking pages only.
+  vrboListing: '',
 };
 
 export const navigation = [
@@ -179,7 +183,13 @@ export const houseGuidelines = [
   { question: 'How does check-in work?', answer: 'The home has smart-lock self check-in. Confirm the arrival window and checkout time on Airbnb; your host will share access instructions for your stay.' },
   { question: 'Is the home on the water?', answer: 'This is a Tampa Heights neighborhood stay, not a beachfront or waterfront home. The Riverwalk and other waterfront destinations are separate places to visit.' },
   { question: 'What are the house rules?', answer: 'Check the Airbnb listing for current rules on pets, smoking, events, and quiet hours before booking. Contact the host on Airbnb if you need clarification.' },
-  { question: 'Where can I see prices and cancellation terms?', answer: 'Enter your dates and guest count on Airbnb for availability, the full price, and the cancellation policy that applies to your reservation. All bookings take place on Airbnb.' },
+  {
+    question: 'Where can I see prices and cancellation terms?',
+    // Direct-booking wording appears only once the owner opens direct booking (data/booking-config.json).
+    answer: directBookingReady
+      ? `Enter your dates and guest count on Airbnb for availability, the full price, and the cancellation policy that applies to that reservation. For stays starting more than ${minLeadDays} days out, you can also send a booking request on this website: you see an estimated price including taxes, nothing is charged until the host accepts your request and emails a Stripe invoice, and our own cancellation policy applies.`
+      : 'Enter your dates and guest count on Airbnb for availability, the full price, and the cancellation policy that applies to your reservation. All bookings take place on Airbnb.',
+  },
 ];
 
 export const siteCopy = {
@@ -229,14 +239,23 @@ export const siteCopy = {
   reviews: { eyebrow: 'Guest notes', title: 'Little moments. Lasting memories.', more: 'Read more guest comments', link: 'Read reviews on Airbnb' },
   faq: { eyebrow: 'Before you arrive', title: 'A few things to know.', description: 'A clear plan makes for an easier stay. Airbnb has the current house rules and reservation details.' },
   booking: { eyebrow: 'Make Tampa your next getaway', title: 'Make the plans.', titleAccent: 'We’re your home base.', description: 'Stay close to Armature Works in a Tampa Heights home for up to six. Choose your dates on Airbnb and let the Tampa plans begin.', note: 'See availability, total pricing, and booking terms on Airbnb. Questions? Message the host there.', caption: 'After the day out / a place that is all yours' },
-  footer: { location: 'A neighborhood home in Tampa Heights, Florida.', note: 'Reservations and payments are handled on Airbnb.' },
+  directBooking: {
+    link: 'Request to book direct',
+    note: `Planning more than ${minLeadDays} days ahead? Pick your dates here and send a request. The host reviews it and emails a secure Stripe invoice; nothing is charged on this website.`,
+  },
+  footer: {
+    location: 'A neighborhood home in Tampa Heights, Florida.',
+    note: directBookingReady
+      ? `Book on Airbnb, or request a direct booking on this website for stays starting more than ${minLeadDays} days out. Accepted direct requests are paid through a Stripe invoice from the host.`
+      : 'Reservations and payments are handled on Airbnb.',
+  },
 };
 
 // HTML metadata is generated from this object by Vite, including for social bots.
 export const seoConfig = {
   title: 'Blue Bliss By The Bay | Tampa Heights Vacation Home',
-  description: 'Your Tampa Heights launchpad near Armature Works: Blue Bliss By The Bay sleeps 6 with 3 bedrooms, private outdoor space, and parking. Book through Airbnb.',
-  siteOrigin: 'https://danielconnolly.github.io', // Confirm production domain before launch.
+  description: `Your Tampa Heights launchpad near Armature Works: Blue Bliss By The Bay sleeps 6 with 3 bedrooms, private outdoor space, and parking. ${directBookingReady ? 'Request a direct stay or book through Airbnb.' : 'Book through Airbnb.'}`,
+  siteOrigin: 'https://dwconnolly.github.io', // Confirm production domain before launch.
   socialImage: 'images/hero.jpg',
   socialImageAlt: 'Blue Bliss By The Bay vacation home in Tampa Heights',
 };
@@ -249,6 +268,7 @@ export const ownerVerification = {
     'Confirm the current arrival/checkout window, pet/smoking/event rules, quiet hours, and cancellation terms. Old supplied times (3–10 PM arrival, 11 AM departure) are intentionally not published.',
     'Confirm bedroom names, bed sizes, loft layout, parking capacity/restrictions, fire pit usage, and the listed amenities.',
     'Confirm the production domain and Airbnb listing URL.',
+    'Bliss Sync direct booking stays closed until every ownerConfirmations value in data/booking-config.json is true: real rates, tax registrations and rates, policies (src/config/policies.ts drafts), licences, insurance, and the booking-request inbox and Stripe invoicing setup.',
     'Approve the existing JPEG social preview: confirm the same property, crop, and publishing rights. Automated similarity is not owner verification.',
   ],
   photoReview: '56 Lightroom photos imported. Supply room-by-room captions/alt descriptions and map bedroom photos to the named rooms. Confirm coverage of the loft sofa bed, bathrooms, parking, and entry; no room labels were inferred from filenames.',

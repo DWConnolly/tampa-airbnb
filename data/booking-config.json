@@ -1,0 +1,39 @@
+{
+  "_readme": "Owner-edited direct booking settings. Edit through a pull request (or GitHub's web editor). Every push to main that changes data/ runs the Calendar sync workflow; a daily 5 AM run is the fallback. Money values are whole US dollars. Every ownerConfirmations value must be true AND directBooking.enabled must be true before booking requests open. See README > Direct booking.",
+  "propertyId": "blue-bliss-by-the-bay",
+  "timeZone": "America/New_York",
+  "termsVersion": "draft-2026-11-15",
+  "directBooking": {
+    "enabled": false,
+    "requestEmail": ""
+  },
+  "rules": {
+    "minLeadDays": 7,
+    "minNights": 2,
+    "maxNights": 28,
+    "maxGuests": 6,
+    "bookingHorizonDays": 365
+  },
+  "pricing": {
+    "_readme": "PLACEHOLDER rates and tax rates for previews only. The owner must set real rates and confirm every tax (rate, base, and whether it applies to the cleaning fee) with the Florida Department of Revenue and the Hillsborough County Tax Collector before setting ownerConfirmations.rates/taxes to true. These figures drive the ESTIMATE shown to guests; the owner sends the final Stripe invoice by email. Seasons are inclusive of their first and last night. weekendNights: 0 = Sunday ... 6 = Saturday.",
+    "currency": "usd",
+    "nightlyRate": 250,
+    "weekendRate": 295,
+    "weekendNights": [5, 6],
+    "seasons": [],
+    "cleaningFee": 150,
+    "taxes": [
+      { "id": "fl_sales", "label": "Florida sales tax (owner to confirm)", "rate": 0.06, "appliesTo": ["lodging", "cleaning"] },
+      { "id": "county_surtax", "label": "Hillsborough County discretionary sales surtax (owner to confirm)", "rate": 0.015, "appliesTo": ["lodging", "cleaning"] },
+      { "id": "county_tdt", "label": "Hillsborough County tourist development tax (owner to confirm)", "rate": 0.06, "appliesTo": ["lodging", "cleaning"] }
+    ]
+  },
+  "ownerConfirmations": {
+    "rates": false,
+    "taxes": false,
+    "policies": false,
+    "licensesAndRegistrations": false,
+    "insurance": false,
+    "requestInboxAndInvoicing": false
+  }
+}

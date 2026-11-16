@@ -4,7 +4,7 @@
 		{
 			"label": "Validate Blue Bliss",
 			"type": "shell",
-			"command": "npm run build && npm run lint && node scripts/base-check.mjs",
+			"command": "npm test && npm run build && npm run lint && node scripts/base-check.mjs",
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "test"
