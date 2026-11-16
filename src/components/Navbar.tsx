@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Menu, Waves, X } from 'lucide-react';
 import { navigation, property } from '../config/siteConfig';
-import { PrimaryBookingLink } from './BookingLink';
+import { PrimaryBookingLink, SecondaryBookingLink } from './BookingLink';
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -39,6 +39,7 @@ export default function Navbar() {
         <nav aria-label="Main navigation" className="desktop-nav">
           {navigation.map((item) => <a key={item.href} href={item.href}>{item.name}</a>)}
         </nav>
+        <SecondaryBookingLink className="header-secondary" />
         <PrimaryBookingLink className="button header-booking" />
         <button className="icon-button menu-toggle" ref={toggleRef} aria-label={open ? 'Close navigation' : 'Open navigation'} aria-expanded={open} aria-controls="mobile-navigation" onClick={() => setOpen(!open)}>
           {open ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
@@ -50,6 +51,7 @@ export default function Navbar() {
           document.querySelector<HTMLElement>(item.href)?.focus({ preventScroll: true });
         }}>{item.name}</a>)}
         <PrimaryBookingLink className="button" />
+        <SecondaryBookingLink />
       </nav>
     </header>
   );

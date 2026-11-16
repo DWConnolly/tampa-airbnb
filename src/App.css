@@ -32,6 +32,8 @@ em { font-weight: inherit; }
 .site-header .brand { color: #fff9ed; }
 .site-header .header-booking { background: transparent; color: #fff5e5; border-color: #a9c2d8; box-shadow: none; }
 .site-header .header-booking:hover { background: #245078; }
+.site-header .secondary-booking { color: #fff9ed; }
+.site-header .header-secondary { display: none; white-space: nowrap; font-size: .75rem; }
 .site-header .icon-button { border-color: #a5caeb; }
 .site-header .icon-button:hover { background: #104b8c; }
 .site-header :focus-visible { outline-color: #ffe1a7; }
@@ -61,6 +63,7 @@ em { font-weight: inherit; }
 .hero h1 em { display: block; color: var(--color-bliss); }
 .hero-description { margin-top: 1rem; max-width: 370px; font-size: 1rem; line-height: 1.75; color: var(--color-muted); }
 .hero-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem 1.3rem; margin-top: 1.3rem; }
+.enquiry-hint { margin-top: .5rem; font-size: .78rem; color: var(--color-muted); max-width: 355px; }
 .hero-booking { width: auto; background: var(--color-bliss); color: #fff; }
 .hero-booking:hover { background: var(--color-ocean); }
 .hero .explore-link { margin: 0; display: inline-flex; font-size: .85rem; color: var(--color-ocean); text-decoration-color: #7e96ac; }
@@ -237,6 +240,8 @@ em { font-weight: inherit; }
 .mobile-booking-bar { background: var(--coastal-deep); color: #fff9ed; border-top-color: #6e8ba4; }
 .mobile-booking-bar .button { background: #fff0d2; color: #102f4c; }
 .mobile-booking-bar .button:hover { background: #eddbbe; }
+.mobile-booking-bar .secondary-booking { color: #fff9ed; flex-shrink: 0; font-size: .78rem; }
+.mobile-booking-bar:has(.secondary-booking) .button { width: auto; flex: 1; }
 .mobile-booking-bar :focus-visible { outline-color: #ffe1a7; }
 .footer-main .brand > span { font-size: 1.75rem; }
 .footer-bottom > p:last-of-type { max-width: 540px; }
@@ -290,6 +295,11 @@ em { font-weight: inherit; }
 	.neighborhood-layout { grid-template-columns: 1fr 1.05fr; gap: 6rem; }
 	.booking-layout { grid-template-columns: 1.1fr 1fr; gap: 6rem; }
 	.booking-photo { width: 100%; margin: 0; }
+}
+@media (min-width: 1100px) {
+	.site-header .header-secondary { display: inline-flex; }
+	.header-inner:has(.header-secondary) { gap: .75rem; }
+	.header-inner:has(.header-secondary) .desktop-nav { gap: 1rem; margin-inline: auto; }
 }
 @media (max-width: 359px) {
 	.hero-actions .button { width: 100%; font-size: .8rem; }

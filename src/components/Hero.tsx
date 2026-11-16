@@ -1,7 +1,7 @@
 import { ArrowDown } from 'lucide-react';
 import { galleryImages, property, siteCopy } from '../config/siteConfig';
-import { directBookingReady } from '../config/booking';
-import BookingLink, { PrimaryBookingLink } from './BookingLink';
+import { directBookingReady, directEnquiryAvailable } from '../config/booking';
+import { PrimaryBookingLink, SecondaryBookingLink } from './BookingLink';
 import PropertyImage from './PropertyImage';
 
 export default function Hero() {
@@ -18,9 +18,10 @@ export default function Hero() {
           <p className="hero-description">{siteCopy.hero.description}</p>
           <div className="hero-actions">
             <PrimaryBookingLink className="button hero-booking" />
-            {directBookingReady && <BookingLink className="text-link">Prefer Airbnb?</BookingLink>}
+            <SecondaryBookingLink />
             <a className="text-link explore-link" href="#the-home">{siteCopy.hero.explore}<ArrowDown size={16} aria-hidden="true" /></a>
           </div>
+          {directEnquiryAvailable && <p className="enquiry-hint">Opens your email app. Review the enquiry and press send.</p>}
         </div>
         <figure className="hero-photo">
           <PropertyImage image={galleryImages[0]} priority sizes="(min-width: 1440px) 850px, (min-width: 900px) 62vw, 100vw" />
@@ -32,7 +33,7 @@ export default function Hero() {
         <ul className="property-facts" aria-label="Property at a glance">
           {facts.map(([value, label]) => <li key={label}><strong>{value}</strong>{' '}<span>{label}</span></li>)}
         </ul>
-        <p className="small-note">{directBookingReady ? 'A request, not a reservation. No payment on this website.' : siteCopy.hero.note}</p>
+        <p className="small-note">{directBookingReady ? 'A request, not a reservation. No payment on this website.' : directEnquiryAvailable ? 'The host confirms dates and price. No dates held or payment taken.' : siteCopy.hero.note}</p>
       </div>
     </section>
   );

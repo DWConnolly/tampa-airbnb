@@ -6,6 +6,8 @@
  * Options: --url=http://127.0.0.1:4183/tampa-airbnb/ --no-axe --no-screenshots
  * --ui-only targets booking/policies and both home CTA states; requires a local
  * Vite dev URL for in-browser fixtures. --baseline captures pre-redesign screens.
+ * --enquiry-only checks the three primary CTA states on a local dev server.
+ * Add --live to check only the actual enquiry state on the deployed site.
  * CHROME_PATH overrides the macOS Chrome default. Never writes application files.
  * Starts preview only if absent; owns/cleans its Chrome/profile and owned preview.
  * Artifacts/report are retained in an OS temporary directory, printed at completion.
@@ -152,7 +154,7 @@ function browserHelpers() {
   });
   window.__check = { visible, rect, unobscured, overflow };
 }
-async function navigate(width, height, scale = 1, path = '', readyFixture = false, requestFixture = false) {
+async function navigate(width, height, scale = 1, path = '', readyFixture = false, requestFixture = false, missingInbox = false) {
   // Use a fresh renderer per scenario. Repeated cross-document navigation of a
   // deeply scrolled target can leave CDP promises in a destroyed context.
   const target = await (await fetch(`${endpoint}/json/new?about:blank`, { method: 'PUT' })).json();
@@ -166,9 +168,9 @@ async function navigate(width, height, scale = 1, path = '', readyFixture = fals
   cdp.on('Network.loadingFailed', e => { if (!e.canceled) networkErrors.push({ type: e.type, error: e.errorText }); });
   await cdp.send('Page.enable'); await cdp.send('Runtime.enable'); await cdp.send('Network.enable');
   await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
-  if (readyFixture || requestFixture) {
+  if (readyFixture || requestFixture || missingInbox) {
     if (!['localhost', '127.0.0.1'].includes(url.hostname)) throw new Error('UI fixtures require a local development server');
-    const patterns = readyFixture ? ['*/src/config/booking.ts*'] : ['*/calendar.json*', '*/src/pages/BookPage.tsx*'];
+    const patterns = readyFixture || missingInbox ? ['*/src/config/booking.ts*'] : ['*/calendar.json*', '*/src/pages/BookPage.tsx*'];
     const fixtureClient = cdp;
     const canceledRequests = new Set();
     fixtureClient.on('Network.loadingFailed', event => { if (event.canceled) canceledRequests.add(event.requestId); });
@@ -188,9 +190,11 @@ async function navigate(width, height, scale = 1, path = '', readyFixture = fals
           calendar.booking.problems = [];
           calendar.blocked = [{ start: '2027-01-28', end: '2027-01-30', source: 'owner' }];
           body = JSON.stringify(calendar);
-        } else if (readyFixture) {
+        } else if (readyFixture || missingInbox) {
           if (!source.includes('const directBookingReady =')) throw new Error('Expected Vite development booking module');
-          body = source.replace(/const directBookingReady =[^;]+;/, 'const directBookingReady = true;');
+          body = readyFixture
+            ? source.replace(/const directBookingReady =[^;]+;/, 'const directBookingReady = true;')
+            : source.replace(/(export )?const directBookingReady =/, (_, exported = '') => `bookingConfig.directBooking.requestEmail = ""; ${exported}const directBookingReady =`);
         } else {
           if (!source.includes('window.location.assign(href)')) throw new Error('Expected mailto handoff in development module');
           body = `window.__uiRequestFixture = true;\n${source.replace('window.location.assign(href)', 'window.__uiMailto = href')}`;
@@ -356,7 +360,7 @@ async function bookingUiChecks() {
       await screenshot(`${baseline ? 'before' : 'after'}-home-${ready ? 'enabled-fixture' : 'disabled'}-${width}`);
       if (!baseline) record(`Home ${width}: ${ready ? 'ready fixture' : 'disabled'} primary booking path`, await cdp.evaluate(expected => {
         const link = document.querySelector('.hero-booking');
-        return expected ? link.pathname.endsWith('/book/') && !!document.querySelector('.hero-actions a[href*="airbnb.com"]') : link.hostname === 'www.airbnb.com';
+        return expected ? link.pathname.endsWith('/book/') && !!document.querySelector('.hero-actions a[href*="airbnb.com"]') : link.protocol === 'mailto:' && link.textContent.trim() === 'Enquire direct';
       }, ready));
     }
     await navigate(width, 960, 1, 'policies/house-rules/');
@@ -367,6 +371,61 @@ async function bookingUiChecks() {
     }));
   }
   if (!baseline) await requestFlowChecks();
+}
+
+async function enquiryChecks() {
+  const config = JSON.parse(await readFile(join(root, 'data/booking-config.json'), 'utf8'));
+  for (const width of [320, 390, 768, 1100, 1440, 1920]) {
+    await navigate(width, width < 600 ? 844 : 960);
+    const primarySelector = width >= 1100 ? '.header-booking' : '.mobile-booking-bar .button';
+    const result = await cdp.evaluate((email, selector) => {
+      const links = [...document.querySelectorAll('.enquiry-link')];
+      const destinations = links.map(a => new URL(a.href));
+      const primary = document.querySelector(selector);
+      const alternative = primary.parentElement.querySelector('.secondary-booking');
+      return {
+        valid: links.length >= 4 && links.every(a => a.textContent.trim() === 'Enquire direct') &&
+          destinations.every(u => u.protocol === 'mailto:' && u.pathname === email &&
+            u.searchParams.get('subject') === 'Stay enquiry for Blue Bliss By The Bay' &&
+            u.searchParams.get('body').includes('no dates are held and no payment is taken')),
+        primaryVisible: __check.unobscured(primary),
+        alternativeVisible: __check.unobscured(alternative),
+        alternativeUrl: alternative?.href,
+        targets: [primary, alternative].map(e => __check.rect(e)),
+        overflow: __check.overflow(),
+        noQuote: !document.querySelector('.quote'),
+        copy: document.querySelector('.enquiry-hint')?.textContent,
+      };
+    }, config.directBooking.requestEmail, primarySelector);
+    record(`Enquiry ${width}: encoded recipient and clear email action`, result.valid && result.noQuote && result.copy.includes('press send'), result);
+    record(`Enquiry ${width}: primary and Airbnb visible with 44px targets`, result.primaryVisible && result.alternativeVisible && result.alternativeUrl === expectedAirbnb && result.targets.every(r => r?.height >= 44), result);
+    record(`Enquiry ${width}: no horizontal overflow`, result.overflow.excess <= 1 && !result.overflow.offenders.length, result.overflow);
+    if ([390, 1440].includes(width)) {
+      await screenshot(`${args.includes('--live') ? 'live' : 'preview'}-enquiry-${width}`);
+      await tabTo(primarySelector);
+      record(`Enquiry ${width}: primary reachable by keyboard with visible focus`, await cdp.evaluate(selector => {
+        const e = document.activeElement;
+        return e.matches(selector) && e.matches(':focus-visible') && getComputedStyle(e).outlineStyle !== 'none';
+      }, primarySelector));
+      if (width === 390) {
+        await navigate(width, 844);
+        await tabTo('.menu-toggle'); await key('Enter');
+        await tabTo('.mobile-nav .enquiry-link');
+        record('Enquiry mobile navigation: email and Airbnb available', await cdp.evaluate(() => __check.unobscured(document.activeElement) && __check.visible(document.querySelector('.mobile-nav .secondary-booking'))));
+        await key('Escape');
+        record('Enquiry mobile navigation: Escape restores toggle focus', await cdp.evaluate(() => document.activeElement.matches('.menu-toggle') && document.querySelector('.mobile-nav').hidden));
+      }
+    }
+  }
+  if (!args.includes('--live')) {
+    for (const ready of [true, false]) {
+      await navigate(390, 844, 1, '', ready, false, !ready);
+      record(`Primary CTA preserves ${ready ? 'fully ready booking' : 'missing inbox Airbnb'} branch`, await cdp.evaluate(expected => {
+        const primary = document.querySelector('.hero-booking');
+        return !document.querySelector('.enquiry-link') && (expected ? primary.pathname.endsWith('/book/') && !!document.querySelector('.hero-actions .secondary-booking') : primary.href === 'https://www.airbnb.com/rooms/1211112487690698739' && !document.querySelector('.secondary-booking'));
+      }, ready));
+    }
+  }
 }
 
 async function viewportChecks(width, height, label, scale = 1) {
@@ -753,7 +812,10 @@ try {
   report.metrics.browser = await (await fetch(`${endpoint}/json/version`)).json();
   const targets = await (await fetch(`${endpoint}/json/list`)).json();
   pageId = targets.find(t => t.type === 'page')?.id;
-  if (args.includes('--ui-only')) {
+  if (args.includes('--enquiry-only')) {
+    await scenario('Direct enquiry CTA checks', enquiryChecks);
+    await scenario('Enquiry accessibility audit', axeAudit);
+  } else if (args.includes('--ui-only')) {
     await scenario('Booking and policy UI', bookingUiChecks);
     if (!args.includes('--baseline')) await scenario('Booking/policy axe audit', axeAudit);
   } else {

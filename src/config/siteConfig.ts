@@ -1,5 +1,5 @@
 // Property content lives here. Confirm flagged facts against the live Airbnb listing.
-import { directBookingReady, minLeadDays } from './booking';
+import { directBookingReady, directEnquiryAvailable, minLeadDays } from './booking';
 
 // Paths are relative to public/; the app resolves them using Vite's deployment base.
 export const assetUrl = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`;
@@ -243,11 +243,16 @@ export const siteCopy = {
     link: 'Request to book direct',
     note: `Planning more than ${minLeadDays} days ahead? Pick your dates here and send a request. The host reviews it and emails a secure Stripe invoice; nothing is charged on this website.`,
   },
+  enquiry: {
+    note: 'Enquire direct opens a draft in your email app. Review it and press send yourself. The host confirms dates and price; this is not a booking, no dates are held and no payment is taken.',
+  },
   footer: {
     location: 'A neighborhood home in Tampa Heights, Florida.',
     note: directBookingReady
       ? `Book on Airbnb, or request a direct booking on this website for stays starting more than ${minLeadDays} days out. Accepted direct requests are paid through a Stripe invoice from the host.`
-      : 'Reservations and payments are handled on Airbnb.',
+      : directEnquiryAvailable
+        ? 'Email the host to enquire about a stay, or book on Airbnb. An enquiry does not reserve dates or take payment.'
+        : 'Reservations and payments are handled on Airbnb.',
   },
 };
 
