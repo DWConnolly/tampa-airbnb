@@ -4,7 +4,8 @@
  * Dependency-free Chrome/CDP regression checks. Run: node scripts/browser-check.mjs
  * Requires Node with native fetch/WebSocket and an installed Chrome.
  * Options: --url=http://127.0.0.1:4183/tampa-airbnb/ --no-axe --no-screenshots
- * --ui-only targets booking/policies and both home CTA states; requires a local
+ * --intake-only tests the current guided enquiry; --live labels live screenshots.
+ * Historical --ui-only targets booking/policies and both home CTA states; requires a local
  * Vite dev URL for in-browser fixtures. --baseline captures pre-redesign screens.
  * --enquiry-only checks the three primary CTA states on a local dev server.
  * Add --live to check only the actual enquiry state on the deployed site.
@@ -19,6 +20,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { addDays, todayInTimeZone } from '../shared/booking/dates.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const args = process.argv.slice(2);
@@ -258,6 +260,97 @@ async function screenshot(name) {
   report.screenshots.push(path);
 }
 
+async function intakeChecks() {
+  const config = JSON.parse(await readFile(join(root, 'data/booking-config.json'), 'utf8'));
+  const start = addDays(todayInTimeZone(config.timeZone), config.rules.minLeadDays + 3);
+  const end = addDays(start, config.rules.minNights);
+  const fill = async (id, value) => cdp.evaluate((id, value) => {
+    const input = document.getElementById(id);
+    const proto = input.tagName === 'SELECT' ? window.HTMLSelectElement.prototype : input.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(proto, 'value').set.call(input, value);
+    input.dispatchEvent(new Event(input.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
+  }, id, value);
+  const submit = () => cdp.evaluate(() => document.querySelector('#enquiry-dialog form').requestSubmit());
+  const click = selector => cdp.evaluate(s => document.querySelector(s).click(), selector);
+  for (const width of [320, 390, 1440]) {
+    await navigate(width, width < 600 ? 844 : 960, 1, 'book/?preview');
+    record(`Intake ${width}: calendar replaced, site-wide launcher visible`, await cdp.evaluate(() => !document.querySelector('.rdp-root, .quote') && __check.unobscured(document.querySelector('.enquiry-launcher button'))));
+    await tabTo('.enquiry-page .enquiry-link'); await key('Enter');
+    await waitFor(() => cdp.evaluate(() => document.querySelector('#enquiry-dialog').open));
+    record(`Intake ${width}: native dialog initial focus and no overflow`, await cdp.evaluate(() => document.activeElement.id === 'enquiry-title' && __check.overflow().excess <= 1 && document.querySelector('#enquiry-dialog').scrollWidth <= document.querySelector('#enquiry-dialog').clientWidth + 1));
+    record(`Intake ${width}: controls have 44px targets`, await cdp.evaluate(() => [...document.querySelectorAll('#enquiry-dialog button, #enquiry-dialog input, #enquiry-dialog select, #enquiry-dialog a')].filter(__check.visible).every(e => e.getBoundingClientRect().height >= 44)));
+    for (let i = 0; i < 15; i++) await key('Tab');
+    record(`Intake ${width}: Tab stays inside dialog`, await cdp.evaluate(() => document.querySelector('#enquiry-dialog').contains(document.activeElement)));
+    await submit();
+    record(`Intake ${width}: missing dates announced`, await cdp.evaluate(() => document.activeElement.matches('#enquiry-errors') && document.querySelector('#enquiry-errors').getAttribute('role') === 'alert'));
+    await fill('enquiry-checkIn', start); await fill('enquiry-checkOut', start); await submit();
+    record(`Intake ${width}: reversed/equal dates rejected`, await cdp.evaluate(() => !!document.querySelector('#enquiry-errors') && !!document.querySelector('#enquiry-checkIn')));
+    await fill('enquiry-checkOut', end);
+    await fill('enquiry-guests', '6');
+    await key('Escape');
+    record(`Intake ${width}: minimize restores opener focus`, await cdp.evaluate(() => !document.querySelector('#enquiry-dialog').open && document.activeElement.matches('.enquiry-page .enquiry-link')));
+    await click('.enquiry-launcher button');
+    record(`Intake ${width}: draft retained after reopen`, await cdp.evaluate(expected => document.querySelector('#enquiry-checkIn').value === expected && document.querySelector('#enquiry-guests').value === '6', start));
+    await submit();
+    await waitFor(() => cdp.evaluate(() => !!document.querySelector('#enquiry-email') && document.activeElement.id === 'enquiry-title'));
+    await submit();
+    await waitFor(() => cdp.evaluate(() => document.activeElement.id === 'enquiry-errors'));
+    record(`Intake ${width}: contact errors announced`, await cdp.evaluate(() => document.querySelector('#enquiry-errors').textContent.includes('valid email') && document.activeElement.id === 'enquiry-errors'));
+    await fill('enquiry-name', 'Synthetic Guest');
+    await fill('enquiry-email', 'bad-address'); await submit();
+    record(`Intake ${width}: invalid email blocked`, await cdp.evaluate(() => !!document.querySelector('#enquiry-errors') && !document.querySelector('.enquiry-send')));
+    await fill('enquiry-email', 'guest@example.invalid');
+    await fill('enquiry-notes', 'A & B? #1');
+    await submit();
+    const review = await cdp.evaluate(recipient => {
+      const link = document.querySelector('.enquiry-send');
+      const u = new URL(link.href);
+      return u.protocol === 'mailto:' && u.pathname === recipient && u.searchParams.get('body').includes('A & B? #1') &&
+        document.querySelector('.enquiry-review').textContent.includes('has not been delivered') &&
+        link.textContent === 'Open email to send enquiry';
+    }, config.directBooking.requestEmail);
+    record(`Intake ${width}: review has correct mailto and no false delivery claim`, review);
+    await click('.enquiry-edit button');
+    await fill('enquiry-guests', '3'); await submit(); await submit();
+    record(`Intake ${width}: edits flow into email`, await cdp.evaluate(() => new URL(document.querySelector('.enquiry-send').href).searchParams.get('body').includes('Guests: 3')));
+    await cdp.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async text => { window.__intakeCopy = text; } } }));
+    await click('.enquiry-review button.button-secondary');
+    await waitFor(() => cdp.evaluate(() => document.querySelector('.enquiry-review [role="status"]').textContent.includes('Enquiry copied')));
+    record(`Intake ${width}: copy fallback contains recipient`, await cdp.evaluate(recipient => window.__intakeCopy.startsWith(`To: ${recipient}`), config.directBooking.requestEmail));
+    await cdp.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined }));
+    await click('.enquiry-review button.button-secondary');
+    await waitFor(() => cdp.evaluate(() => document.activeElement.id === 'enquiry-text'));
+    record(`Intake ${width}: unavailable clipboard selects manual fallback`, await cdp.evaluate(() => {
+      const text = document.querySelector('#enquiry-text');
+      return text.selectionEnd === text.value.length && document.querySelector('.enquiry-review [role="status"]').textContent.includes('unavailable');
+    }));
+    await key('Escape');
+    await click('.subpage-footer a[href$="policies/privacy/"]');
+    await waitFor(() => cdp.evaluate(() => location.pathname.endsWith('/policies/privacy/')));
+    await click('.enquiry-launcher button');
+    record(`Intake ${width}: draft survives client-side route change`, await cdp.evaluate(() => document.querySelector('.enquiry-send') && new URL(document.querySelector('.enquiry-send').href).searchParams.get('body').includes('guest@example.invalid')));
+    await click('.enquiry-actions button:last-child');
+    record(`Intake ${width}: clear resets all draft fields`, await cdp.evaluate(() => document.querySelector('#enquiry-checkIn').value === '' && document.querySelector('#enquiry-guests').value === '2' && !document.querySelector('.enquiry-send')));
+    await fill('enquiry-checkIn', start); await fill('enquiry-checkOut', end); await submit();
+    record(`Intake ${width}: reset clears contact and notes`, await cdp.evaluate(() => ['name', 'email', 'notes'].every(id => document.getElementById(`enquiry-${id}`).value === '')));
+    await click('.enquiry-actions button:first-child');
+    await cdp.evaluate(() => { document.querySelector('#enquiry-dialog').scrollTop = 0; });
+    record(`Intake ${width}: no browser storage or guest query data`, await cdp.evaluate(() => localStorage.length === 0 && sessionStorage.length === 0 && !location.href.includes('guest')));
+    await cdp.send('Page.reload');
+    await waitFor(() => cdp.evaluate(() => document.readyState === 'complete' && !!document.querySelector('.enquiry-launcher')));
+    await click('.enquiry-launcher button');
+    record(`Intake ${width}: reload clears draft`, await cdp.evaluate(() => document.querySelector('#enquiry-checkIn').value === '' && !document.querySelector('.enquiry-send')));
+    await key('Escape');
+    await cdp.evaluate(() => document.querySelector('.page-back-link').click());
+    await waitFor(() => cdp.evaluate(() => !!document.querySelector('.hero-booking')));
+    await click('.hero-booking');
+    record(`Intake ${width}: home primary opens same guided assistant`, await cdp.evaluate(() => document.querySelector('#enquiry-dialog').open));
+    await cdp.evaluate(() => { document.querySelector('#enquiry-dialog').scrollTop = 0; });
+    if (width !== 320) await screenshot(`${args.includes('--live') ? 'live' : 'preview'}-intake-${width}`);
+    await key('Escape');
+  }
+}
+
 async function bookingUiChecks() {
   const baseline = args.includes('--baseline');
   for (const width of baseline ? [390, 1440] : [320, 360, 390, 600, 768, 900, 1024, 1100, 1199, 1200, 1440, 1920]) {
@@ -431,12 +524,12 @@ async function enquiryChecks() {
 async function viewportChecks(width, height, label, scale = 1) {
   await navigate(width, height, scale);
   const metrics = await cdp.evaluate(() => {
-    const ctas = [...document.querySelectorAll('.hero-booking, .header-booking, .mobile-booking-bar .booking-link')].map(e => ({
+    const ctas = [...document.querySelectorAll('.hero-booking, .header-booking, .enquiry-launcher .button')].map(e => ({
       class: e.className, rect: __check.rect(e), unobscured: __check.unobscured(e),
     }));
     return { overflow: __check.overflow(), viewport: { width: innerWidth, height: innerHeight, dpr: window.devicePixelRatio },
       composition: { image: __check.rect(document.querySelector('.hero-photo img')), heading: __check.rect(document.querySelector('h1')), heroCopy: __check.rect(document.querySelector('.hero-copy')), facts: __check.rect(document.querySelector('.property-facts')) },
-      ctas, header: __check.rect(document.querySelector('.site-header')), sticky: __check.rect(document.querySelector('.mobile-booking-bar')) };
+      ctas, header: __check.rect(document.querySelector('.site-header')), sticky: __check.rect(document.querySelector('.enquiry-launcher')) };
   });
   report.metrics[label] = metrics;
   record(`${label}: no horizontal overflow`, metrics.overflow.excess <= 1 && !metrics.overflow.offenders.length, metrics.overflow);
@@ -454,7 +547,7 @@ async function viewportChecks(width, height, label, scale = 1) {
   await sleep(100);
   const footer = await cdp.evaluate(() => {
     const items = [...document.querySelectorAll('.site-footer a, .footer-bottom p')];
-    return { sticky: __check.rect(document.querySelector('.mobile-booking-bar')), items: items.map(e => ({ text: e.textContent, rect: __check.rect(e), unobscured: __check.unobscured(e) })) };
+    return { sticky: __check.rect(document.querySelector('.enquiry-launcher')), items: items.map(e => ({ text: e.textContent, rect: __check.rect(e), unobscured: __check.unobscured(e) })) };
   });
   report.metrics[label].footer = footer;
   // A tall footer need not fit one short screen: verify its bottom text at the
@@ -770,11 +863,34 @@ async function axeAudit() {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     source = await response.text();
   } catch (error) { skip('axe-core audit', `Optional CDN unavailable: ${error.message}`); return; }
-  const states = args.includes('--ui-only') ? ['book-mobile', 'book-desktop', 'policy', 'home-ready'] : ['mobile', 'desktop', 'expanded-disclosures', 'modal'];
+  const states = args.includes('--intake-only') ? ['mobile', 'desktop', 'intake-mobile', 'intake-desktop', 'intake-contact', 'intake-review'] : args.includes('--ui-only') ? ['book-mobile', 'book-desktop', 'policy', 'home-ready'] : ['mobile', 'desktop', 'expanded-disclosures', 'modal'];
   for (const state of states) {
     const desktop = state.includes('desktop');
     const path = state.startsWith('book') ? 'book/?preview' : state === 'policy' ? 'policies/house-rules/' : '';
     await navigate(desktop ? 1440 : 390, desktop ? 900 : 844, 1, path, state === 'home-ready');
+    if (state.startsWith('intake')) {
+      await cdp.evaluate(() => document.querySelector('.enquiry-launcher button').click());
+      if (state === 'intake-contact' || state === 'intake-review') {
+        await cdp.evaluate((start, end) => {
+          for (const [id, value] of [['enquiry-checkIn', start], ['enquiry-checkOut', end]]) {
+            const el = document.getElementById(id);
+            Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(el, value);
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        }, addDays(todayInTimeZone('America/New_York'), 10), addDays(todayInTimeZone('America/New_York'), 12));
+        await cdp.evaluate(() => document.querySelector('#enquiry-dialog form').requestSubmit());
+        if (state === 'intake-review') {
+          await cdp.evaluate(() => {
+            for (const [id, value] of [['enquiry-name', 'Synthetic Guest'], ['enquiry-email', 'guest@example.invalid']]) {
+              const el = document.getElementById(id);
+              Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(el, value);
+              el.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+          });
+          await cdp.evaluate(() => document.querySelector('#enquiry-dialog form').requestSubmit());
+        }
+      }
+    }
     if (state.startsWith('book')) await waitFor(() => cdp.evaluate(() => !!document.querySelector('.rdp-day_button')));
     if (state === 'expanded-disclosures') {
       for (const selector of ['.owner-note summary', '.more-reviews summary', ...Array.from({ length: 5 }, (_, i) => `.faq-list details:nth-child(${i + 1}) summary`)]) {
@@ -812,7 +928,10 @@ try {
   report.metrics.browser = await (await fetch(`${endpoint}/json/version`)).json();
   const targets = await (await fetch(`${endpoint}/json/list`)).json();
   pageId = targets.find(t => t.type === 'page')?.id;
-  if (args.includes('--enquiry-only')) {
+  if (args.includes('--intake-only')) {
+    await scenario('Guided availability intake', intakeChecks);
+    await scenario('Intake accessibility audit', axeAudit);
+  } else if (args.includes('--enquiry-only')) {
     await scenario('Direct enquiry CTA checks', enquiryChecks);
     await scenario('Enquiry accessibility audit', axeAudit);
   } else if (args.includes('--ui-only')) {

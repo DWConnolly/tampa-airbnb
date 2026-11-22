@@ -5,7 +5,7 @@ import Experience from '../components/Experience';
 import Amenities from '../components/Amenities';
 import Guidelines from '../components/Guidelines';
 import Reviews from '../components/Reviews';
-import BookCTA, { MobileBookingBar } from '../components/BookCTA';
+import BookCTA from '../components/BookCTA';
 import Footer from '../components/Footer';
 
 export default function HomePage() {
@@ -23,7 +23,6 @@ export default function HomePage() {
         <BookCTA />
       </main>
       <Footer />
-      <MobileBookingBar />
     </>
   );
 }

@@ -8,7 +8,7 @@ export interface PageRoute {
 }
 
 export const pageRoutes = {
-  book: { path: 'book/', title: 'Request to book | Blue Bliss By The Bay', description: 'Check dates and send a direct booking request for Blue Bliss By The Bay in Tampa Heights. Stays starting within 7 days are booked on Airbnb.' },
+  book: { path: 'book/', title: 'Availability enquiry | Blue Bliss By The Bay', description: 'Prepare an availability enquiry for Blue Bliss By The Bay with our guided stay assistant. The host confirms dates and price by email.' },
   cancellation: { path: 'policies/cancellation/', title: 'Cancellation policy | Blue Bliss By The Bay', description: 'Cancellation policy for direct bookings at Blue Bliss By The Bay.' },
   houseRules: { path: 'policies/house-rules/', title: 'House rules | Blue Bliss By The Bay', description: 'House rules for Blue Bliss By The Bay in Tampa Heights.' },
   rentalTerms: { path: 'policies/rental-terms/', title: 'Rental terms | Blue Bliss By The Bay', description: 'Rental terms for direct bookings at Blue Bliss By The Bay.' },

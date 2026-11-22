@@ -24,7 +24,7 @@ export default function PageLayout({ children }: { children: ReactNode }) {
         <div className="shell footer-main">
           <div><p>© {new Date().getFullYear()} {property.name}</p></div>
           <nav aria-label="Booking and policies">
-            <Link to={`/${pageRoutes.book.path}`}>Request to book</Link>
+            <Link to={`/${pageRoutes.book.path}`}>Enquire about a stay</Link>
             {policyRouteKeys.map((key) => <Link key={key} to={`/${pageRoutes[key].path}`}>{policies[key].title}</Link>)}
           </nav>
         </div>

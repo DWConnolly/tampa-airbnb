@@ -244,7 +244,7 @@ export const siteCopy = {
     note: `Planning more than ${minLeadDays} days ahead? Pick your dates here and send a request. The host reviews it and emails a secure Stripe invoice; nothing is charged on this website.`,
   },
   enquiry: {
-    note: 'Enquire direct opens a draft in your email app. Review it and press send yourself. The host confirms dates and price; this is not a booking, no dates are held and no payment is taken.',
+    note: 'Enquire direct opens our guided stay assistant. Review your enquiry, then open your email app and press Send yourself. The host confirms dates and price; no dates are held and no payment is taken.',
   },
   footer: {
     location: 'A neighborhood home in Tampa Heights, Florida.',

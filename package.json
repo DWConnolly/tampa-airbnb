@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "test": "node --test \"shared/**/*.test.ts\"",
+    "test": "node --test \"shared/**/*.test.ts\" \"tests/**/*.test.ts\"",
     "sync:calendar": "node scripts/sync/calendar-sync.ts",
     "preview": "vite preview"
   },
