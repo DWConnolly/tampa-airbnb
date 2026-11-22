@@ -343,6 +343,10 @@ async function intakeChecks() {
     await key('Escape');
     await cdp.evaluate(() => document.querySelector('.page-back-link').click());
     await waitFor(() => cdp.evaluate(() => !!document.querySelector('.hero-booking')));
+    await waitFor(() => cdp.evaluate(() => {
+      const image = document.querySelector('.hero-photo img');
+      return image?.complete && image.naturalWidth > 0;
+    }));
     await click('.hero-booking');
     record(`Intake ${width}: home primary opens same guided assistant`, await cdp.evaluate(() => document.querySelector('#enquiry-dialog').open));
     await cdp.evaluate(() => { document.querySelector('#enquiry-dialog').scrollTop = 0; });
