@@ -27,6 +27,8 @@ for (const base of ['/', '/tampa-airbnb/', '/coastal-preview/']) {
     const pageUrl = new URL(base, seoConfig.siteOrigin).href;
     const imageUrl = new URL(seoConfig.socialImage, pageUrl).href;
     assert.ok(html.includes(`<title>${seoConfig.title}</title>`));
+    assert.ok(html.includes(`property="og:title" content="${seoConfig.title}"`));
+    assert.ok(html.includes(`name="twitter:title" content="${seoConfig.title}"`));
     assert.ok(html.includes(`rel="canonical" href="${pageUrl}"`));
     assert.ok(html.includes(`property="og:image" content="${imageUrl}"`));
     assert.ok(html.includes(`name="twitter:image" content="${imageUrl}"`));
@@ -39,6 +41,8 @@ for (const base of ['/', '/tampa-airbnb/', '/coastal-preview/']) {
       const page = routeHtml(html, base, route);
       const routeUrl = new URL(route.path, pageUrl).href;
       assert.ok(page.includes(`<title>${route.title}</title>`));
+      assert.ok(page.includes(`property="og:title" content="${route.title}"`));
+      assert.ok(page.includes(`name="twitter:title" content="${route.title}"`));
       assert.ok(page.includes(`rel="canonical" href="${routeUrl}"`));
       assert.ok(page.includes(`property="og:url" content="${routeUrl}"`));
       assert.ok(page.includes(`src="${base}assets/`));

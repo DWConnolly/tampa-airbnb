@@ -156,6 +156,8 @@ flowchart LR
 
 ## Deployment and social sharing
 
+`siteTitle` in `src/config/routes.ts` supplies the exact shared browser/SEO title, “Blue Bliss | 3BR TPA Heights| Armature/Riverwalk,” for home, enquiry and policy routes, including Open Graph and Twitter. Route descriptions and canonical URLs remain page-specific.
+
 [vite.config.ts](vite.config.ts) preserves the existing `/tampa-airbnb/` base. `assetUrl` uses the resolved base for property images, and HTML uses Vite’s `%BASE_URL%` for the favicon. The metadata plugin uses the same resolved base, including CLI base overrides.
 
 `seoConfig` is the single source for the title, description, production origin, and social-image path. Vite emits title, canonical, Open Graph, and Twitter metadata into HTML at build time, so social crawlers do not need to run React. Confirm `siteOrigin` before launch; changing domains requires rebuilding. The sharing image uses the existing [public/images/hero.jpg](public/images/hero.jpg), which is a different export from the AVIF. Both files decode successfully, and automated pixel comparison is broadly similar, but **the owner must approve the JPEG’s identity, crop, and publishing rights**. Similarity does not establish provenance. Supply a replacement authentic JPEG/PNG if necessary. Test the deployed preview with the intended social platforms, which may cache older metadata.

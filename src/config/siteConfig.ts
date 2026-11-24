@@ -1,5 +1,6 @@
 // Property content lives here. Confirm flagged facts against the live Airbnb listing.
 import { directBookingReady, directEnquiryAvailable, minLeadDays } from './booking';
+import { siteTitle } from './routes';
 
 // Paths are relative to public/; the app resolves them using Vite's deployment base.
 export const assetUrl = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`;
@@ -259,7 +260,7 @@ export const siteCopy = {
 
 // HTML metadata is generated from this object by Vite, including for social bots.
 export const seoConfig = {
-  title: 'Blue Bliss By The Bay | Tampa Heights Vacation Home',
+  title: siteTitle,
   description: `Your Tampa Heights launchpad near Armature Works: Blue Bliss By The Bay sleeps 6 with 3 bedrooms, private outdoor space, and parking. ${directBookingReady ? 'Request a direct stay or book through Airbnb.' : 'Book through Airbnb.'}`,
   siteOrigin: 'https://dwconnolly.github.io', // Confirm production domain before launch.
   socialImage: 'images/hero.jpg',
