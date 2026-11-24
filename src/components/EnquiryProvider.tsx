@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { MessageCircle, X } from 'lucide-react';
 import { bookingConfig, enquiryAvailable } from '../config/booking';
-import { externalLinks, property } from '../config/siteConfig';
+import { externalLinks, property, siteCopy } from '../config/siteConfig';
 import { earliestDirectCheckIn, latestDirectCheckIn } from '../../shared/booking/rules.ts';
 import { todayInTimeZone, addDays, isIsoDate } from '../../shared/booking/dates.ts';
 import { NOTES_MAX } from '../../shared/booking/request.ts';
@@ -85,7 +85,7 @@ export default function EnquiryProvider({ children }: { children: ReactNode }) {
       {children}
       {enquiryAvailable && <>
         <aside className="enquiry-launcher" aria-label="Availability enquiry">
-          <button ref={launcher} className="button" onClick={launch} aria-haspopup="dialog" aria-controls="enquiry-dialog"><MessageCircle size={20} aria-hidden="true" />Enquire direct</button>
+          <button ref={launcher} className="button" onClick={launch} aria-haspopup="dialog" aria-controls="enquiry-dialog"><MessageCircle size={20} aria-hidden="true" /><span>{siteCopy.enquiry.label}</span></button>
           <a className="text-link" href={externalLinks.airbnbListing}>Book on Airbnb</a>
         </aside>
         <dialog ref={dialog} id="enquiry-dialog" className="enquiry-dialog" aria-labelledby="enquiry-title" aria-describedby="enquiry-intro" onCancel={event => { event.preventDefault(); close(); }}>
@@ -100,7 +100,7 @@ export default function EnquiryProvider({ children }: { children: ReactNode }) {
             {errors.length > 0 && <div id="enquiry-errors" className="error-summary" role="alert" tabIndex={-1} ref={errorPanel}><strong>Please check:</strong><ul>{errors.map(message => <li key={message}>{message}</li>)}</ul></div>}
             <form noValidate aria-describedby={errors.length ? 'enquiry-errors' : undefined} onSubmit={event => { event.preventDefault(); if (step < 2 && validate()) go(step + 1); }}>
               {step === 0 && <div className="enquiry-fields">
-                <p className="small-note">These are preferred dates, not verified availability. Stays start more than {rules.minLeadDays} days ahead and last {rules.minNights}–{rules.maxNights} nights. Arriving sooner? <a className="inline-link" href={externalLinks.airbnbListing}>Check Airbnb</a>.</p>
+                <p className="small-note">These are preferred dates, not verified availability. Stays start more than {rules.minLeadDays} days ahead and last {rules.minNights}–{rules.maxNights} nights. <a className="inline-link" href={externalLinks.airbnbListing}>Check Airbnb</a>.</p>
                 <label className="field" htmlFor="enquiry-checkIn"><span>Preferred check-in</span><input id="enquiry-checkIn" type="date" required min={earliestDirectCheckIn(today, rules)} max={latestDirectCheckIn(today, rules)} value={draft.checkIn} onChange={e => update('checkIn', e.target.value)} /></label>
                 <label className="field" htmlFor="enquiry-checkOut"><span>Preferred checkout</span><input id="enquiry-checkOut" type="date" required min={isIsoDate(draft.checkIn) ? addDays(draft.checkIn, rules.minNights) : earliestDirectCheckIn(today, rules)} value={draft.checkOut} onChange={e => update('checkOut', e.target.value)} /></label>
                 <label className="field" htmlFor="enquiry-guests"><span>Guests, including children</span><select id="enquiry-guests" value={draft.guests} onChange={e => update('guests', Number(e.target.value))}>{Array.from({ length: rules.maxGuests }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1} {i ? 'guests' : 'guest'}</option>)}</select></label>

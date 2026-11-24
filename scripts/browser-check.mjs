@@ -262,6 +262,25 @@ async function screenshot(name) {
 
 async function intakeChecks() {
   const config = JSON.parse(await readFile(join(root, 'data/booking-config.json'), 'utf8'));
+  for (const width of [320, 390, 1100, 1440]) {
+    await navigate(width, width < 600 ? 844 : 960);
+    const copy = await cdp.evaluate(() => {
+      const buttons = [...document.querySelectorAll('.enquiry-link, .enquiry-launcher button')];
+      const container = innerWidth >= 1100 ? document.querySelector('.header-inner') : document.querySelector('.enquiry-launcher');
+      const direct = container.querySelector('button[aria-haspopup="dialog"]');
+      const airbnb = container.querySelector('a[href*="airbnb.com"]');
+      return {
+        labels: buttons.every(button => button.textContent.trim() === 'Enquire direct (no fees)'),
+        visible: __check.unobscured(direct) && __check.unobscured(airbnb),
+        overflow: __check.overflow().excess,
+        airbnb: airbnb?.href,
+      };
+    });
+    record(`CTA ${width}: no-fees label with visible Airbnb and no overflow`, copy.labels && copy.visible && copy.overflow <= 1 && copy.airbnb === expectedAirbnb, copy);
+    if ([390, 1440].includes(width)) await screenshot(`${args.includes('--live') ? 'live' : 'preview'}-cta-${width}`);
+    await cdp.evaluate(() => document.querySelector('.hero-booking').click());
+    record(`CTA ${width}: guided enquiry opens without arriving-sooner copy`, await cdp.evaluate(() => document.querySelector('#enquiry-dialog').open && !/arriving sooner/i.test(document.body.textContent) && document.querySelector('#enquiry-dialog a[href*="airbnb.com"]')?.textContent === 'Check Airbnb'));
+  }
   const start = addDays(todayInTimeZone(config.timeZone), config.rules.minLeadDays + 3);
   const end = addDays(start, config.rules.minNights);
   const fill = async (id, value) => cdp.evaluate((id, value) => {

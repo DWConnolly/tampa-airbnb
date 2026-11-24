@@ -244,6 +244,7 @@ export const siteCopy = {
     note: `Planning more than ${minLeadDays} days ahead? Pick your dates here and send a request. The host reviews it and emails a secure Stripe invoice; nothing is charged on this website.`,
   },
   enquiry: {
+    label: 'Enquire direct (no fees)',
     note: 'Enquire direct opens our guided stay assistant. Review your enquiry, then open your email app and press Send yourself. The host confirms dates and price; no dates are held and no payment is taken.',
   },
   footer: {

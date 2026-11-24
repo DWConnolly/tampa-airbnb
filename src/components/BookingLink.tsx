@@ -17,7 +17,7 @@ export function PrimaryBookingLink({ className = '' }: { className?: string }) {
   const open = useEnquiry();
   return enquiryAvailable ? (
     <button type="button" className={`enquiry-link ${className}`} onClick={open} aria-haspopup="dialog" aria-controls="enquiry-dialog">
-      <span>Enquire direct</span><MessageCircle size={18} aria-hidden="true" />
+      <span>{siteCopy.enquiry.label}</span><MessageCircle size={18} aria-hidden="true" />
     </button>
   ) : <BookingLink className={className} />;
 }
