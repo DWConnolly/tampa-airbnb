@@ -170,6 +170,11 @@ async function navigate(width, height, scale = 1, path = '', readyFixture = fals
   cdp.on('Network.loadingFailed', e => { if (!e.canceled) networkErrors.push({ type: e.type, error: e.errorText }); });
   await cdp.send('Page.enable'); await cdp.send('Runtime.enable'); await cdp.send('Network.enable');
   await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
+  if (args.includes('--intake-only')) {
+    // Never send browser-test inputs to the real provider, including on live pages.
+    await cdp.send('Network.setBlockedURLs', { urls: ['https://formspree.io/*'] });
+    await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: `(${formspreeMock.toString()})()` });
+  }
   if (readyFixture || requestFixture || missingInbox) {
     if (!['localhost', '127.0.0.1'].includes(url.hostname)) throw new Error('UI fixtures require a local development server');
     const patterns = readyFixture || missingInbox ? ['*/src/config/booking.ts*'] : ['*/calendar.json*', '*/src/pages/BookPage.tsx*'];
@@ -260,6 +265,24 @@ async function screenshot(name) {
   report.screenshots.push(path);
 }
 
+function formspreeMock() {
+  const original = window.fetch.bind(window);
+  window.__formTest = { mode: 'reject', calls: [], finish: null };
+  window.fetch = (input, options) => {
+    if (String(input) !== 'https://formspree.io/f/mjywpjne') return original(input, options);
+    const state = window.__formTest;
+    state.calls.push({ method: options.method, payload: JSON.parse(options.body) });
+    if (state.mode === 'network') return Promise.reject(new TypeError('Synthetic network failure'));
+    if (state.mode === 'pending') return new Promise((resolve, reject) => {
+      state.finish = () => resolve(Response.json({ ok: true }));
+      options.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    });
+    if (state.mode === 'rate') return Promise.resolve(Response.json({ errors: [] }, { status: 429 }));
+    if (state.mode === 'reject') return Promise.resolve(Response.json({ errors: [] }, { status: 422 }));
+    return Promise.resolve(Response.json({ ok: state.mode === 'accept' }));
+  };
+}
+
 async function intakeChecks() {
   const config = JSON.parse(await readFile(join(root, 'data/booking-config.json'), 'utf8'));
   for (const width of [320, 390, 1100, 1440]) {
@@ -323,38 +346,52 @@ async function intakeChecks() {
     await fill('enquiry-email', 'guest@example.invalid');
     await fill('enquiry-notes', 'A & B? #1');
     await submit();
-    const review = await cdp.evaluate(recipient => {
-      const link = document.querySelector('.enquiry-send');
-      const u = new URL(link.href);
-      return u.protocol === 'mailto:' && u.pathname === recipient && u.searchParams.get('body').includes('A & B? #1') &&
-        document.querySelector('.enquiry-review').textContent.includes('Press Send there to request availability') &&
-        link.textContent === 'Open email to send enquiry';
-    }, config.directBooking.requestEmail);
-    record(`Intake ${width}: review has correct mailto and no false delivery claim`, review);
+    const review = await cdp.evaluate(() => {
+      const button = document.querySelector('.enquiry-send');
+      return button.tagName === 'BUTTON' && button.type === 'submit' && button.textContent === 'Send' &&
+        document.querySelectorAll('.enquiry-review button[type="submit"]').length === 1 &&
+        !document.querySelector('#enquiry-dialog a[href^="mailto:"], .enquiry-recipient, #enquiry-text') &&
+        !document.querySelector('.enquiry-review').textContent.includes('Copy enquiry') &&
+        document.querySelector('.enquiry-review').textContent.includes('Formspree') && !document.querySelector('.enquiry-success');
+    });
+    record(`Intake ${width}: single Send, processor notice, no recipient or mailto`, review);
     await click('.enquiry-edit button');
     await fill('enquiry-guests', '3'); await submit(); await submit();
-    record(`Intake ${width}: edits flow into email`, await cdp.evaluate(() => new URL(document.querySelector('.enquiry-send').href).searchParams.get('body').includes('Guests: 3')));
-    await cdp.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async text => { window.__intakeCopy = text; } } }));
-    await click('.enquiry-review button.button-secondary');
-    await waitFor(() => cdp.evaluate(() => document.querySelector('.enquiry-review [role="status"]').textContent.includes('Enquiry copied')));
-    record(`Intake ${width}: copy fallback contains recipient`, await cdp.evaluate(recipient => window.__intakeCopy.startsWith(`To: ${recipient}`), config.directBooking.requestEmail));
-    await cdp.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined }));
-    await click('.enquiry-review button.button-secondary');
-    await waitFor(() => cdp.evaluate(() => document.activeElement.id === 'enquiry-text'));
-    record(`Intake ${width}: unavailable clipboard selects manual fallback`, await cdp.evaluate(() => {
-      const text = document.querySelector('#enquiry-text');
-      return text.selectionEnd === text.value.length && document.querySelector('.enquiry-review [role="status"]').textContent.includes('unavailable');
+    for (const mode of ['reject', 'rate', 'network', 'unconfirmed']) {
+      await cdp.evaluate(mode => { window.__formTest.mode = mode; }, mode);
+      await submit();
+      await waitFor(() => cdp.evaluate(() => document.activeElement.id === 'enquiry-errors'));
+      record(`Intake ${width}: ${mode} preserves draft without success`, await cdp.evaluate(() => !document.querySelector('.enquiry-success') && document.querySelector('.guest-bubble').textContent.includes('guest@example.invalid') && !document.querySelector('.enquiry-send').disabled));
+    }
+    record(`Intake ${width}: edited structured payload and no automatic retries`, await cdp.evaluate(() => {
+      const calls = window.__formTest.calls;
+      return calls.length === 4 && calls.every(c => c.method === 'POST' && c.payload.guests === 3 && c.payload.email === 'guest@example.invalid' && c.payload.notes === 'A & B? #1' && !('recipient' in c.payload));
     }));
+    await cdp.evaluate(() => { window.__formTest.mode = 'pending'; });
+    await cdp.evaluate(() => {
+      const form = document.querySelector('#enquiry-dialog form');
+      form.requestSubmit(); form.requestSubmit();
+    });
+    record(`Intake ${width}: pending locks Send, edit and reset without duplicate POST`, await cdp.evaluate(() => window.__formTest.calls.length === 5 && document.querySelector('.enquiry-send').disabled && [...document.querySelectorAll('.enquiry-edit button, .enquiry-actions button')].every(b => b.disabled) && !document.querySelector('.enquiry-success')));
     await key('Escape');
     await click('.subpage-footer a[href$="policies/privacy/"]');
     await waitFor(() => cdp.evaluate(() => location.pathname.endsWith('/policies/privacy/')));
+    record(`Intake ${width}: privacy explains provider processing`, await cdp.evaluate(() => document.querySelector('.policy-page').textContent.includes('Formspree receives and stores submissions') && !document.querySelector('.policy-page .draft-banner')));
     await click('.enquiry-launcher button');
-    record(`Intake ${width}: draft survives client-side route change`, await cdp.evaluate(() => document.querySelector('.enquiry-send') && new URL(document.querySelector('.enquiry-send').href).searchParams.get('body').includes('guest@example.invalid')));
-    await click('.enquiry-actions button:last-child');
-    record(`Intake ${width}: clear resets all draft fields`, await cdp.evaluate(() => document.querySelector('#enquiry-checkIn').value === '' && document.querySelector('#enquiry-guests').value === '2' && !document.querySelector('.enquiry-send')));
+    record(`Intake ${width}: pending submission survives navigation and reopen`, await cdp.evaluate(() => document.querySelector('.enquiry-send').disabled && window.__formTest.calls.length === 5));
+    await cdp.evaluate(() => window.__formTest.finish());
+    await waitFor(() => cdp.evaluate(() => !!document.querySelector('.enquiry-success') && document.activeElement.id === 'enquiry-title'));
+    record(`Intake ${width}: acceptance alone displays received without booking claim`, await cdp.evaluate(() => document.querySelector('.enquiry-progress').textContent === 'Enquiry received' && document.querySelector('.enquiry-success').textContent.includes('not reserved') && !document.querySelector('.guest-bubble, .enquiry-send')));
+    if (width === 390) await screenshot(`${args.includes('--live') ? 'live' : 'preview'}-form-accepted-${width}`);
+    await key('Escape'); await click('.enquiry-launcher button');
+    record(`Intake ${width}: reopening success cannot resubmit`, await cdp.evaluate(() => !!document.querySelector('.enquiry-success') && !document.querySelector('.enquiry-send') && window.__formTest.calls.length === 5));
+    await click('.enquiry-success button');
+    record(`Intake ${width}: start new clears previous draft`, await cdp.evaluate(() => document.querySelector('#enquiry-checkIn').value === '' && document.querySelector('#enquiry-guests').value === '2'));
     await fill('enquiry-checkIn', start); await fill('enquiry-checkOut', end); await submit();
     record(`Intake ${width}: reset clears contact and notes`, await cdp.evaluate(() => ['name', 'email', 'notes'].every(id => document.getElementById(`enquiry-${id}`).value === '')));
-    await click('.enquiry-actions button:first-child');
+    await fill('enquiry-name', 'Another synthetic draft');
+    await click('.enquiry-actions button:last-child');
+    record(`Intake ${width}: explicit clear resets unsent draft`, await cdp.evaluate(() => document.querySelector('#enquiry-checkIn').value === '' && !document.querySelector('#enquiry-name')));
     await cdp.evaluate(() => { document.querySelector('#enquiry-dialog').scrollTop = 0; });
     record(`Intake ${width}: no browser storage or guest query data`, await cdp.evaluate(() => localStorage.length === 0 && sessionStorage.length === 0 && !location.href.includes('guest')));
     await cdp.send('Page.reload');

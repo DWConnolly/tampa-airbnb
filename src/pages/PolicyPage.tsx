@@ -12,7 +12,7 @@ export default function PolicyPage({ policy }: { policy: PolicyKey }) {
       <article className="shell section policy-page" aria-labelledby="policy-title">
         <p className="eyebrow">Direct bookings</p>
         <h1 id="policy-title">{title}</h1>
-        {!policiesConfirmed && (
+        {!policiesConfirmed && policy !== 'privacy' && (
           <p className="draft-banner" role="note"><strong>Draft for owner review.</strong> This policy is not in effect yet, and items marked “Owner to confirm” are open questions. Direct booking stays closed until the owner confirms the final text.</p>
         )}
         <p className="policy-intro">{intro}</p>

@@ -1,29 +1,31 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { MessageCircle, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { bookingConfig, enquiryAvailable } from '../config/booking';
 import { property, siteCopy } from '../config/siteConfig';
 import { earliestDirectCheckIn, latestDirectCheckIn } from '../../shared/booking/rules.ts';
 import { todayInTimeZone, addDays, isIsoDate } from '../../shared/booking/dates.ts';
 import { NOTES_MAX } from '../../shared/booking/request.ts';
 import { EnquiryContext } from '../enquiry/context';
-import { emptyEnquiry, dateErrors, contactErrors, enquiryEmail, type EnquiryDraft } from '../enquiry/intake';
+import { emptyEnquiry, dateErrors, contactErrors, type EnquiryDraft } from '../enquiry/intake';
+import { submitEnquiry } from '../enquiry/submit';
+import { enquiryEndpoint } from '../config/enquiry';
+import { pageRoutes } from '../config/routes';
 
 export default function EnquiryProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<EnquiryDraft>(emptyEnquiry);
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
-  const [copyStatus, setCopyStatus] = useState('');
+  const [submission, setSubmission] = useState<'idle' | 'pending' | 'accepted'>('idle');
+  const sending = useRef(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const opener = useRef<HTMLElement | null>(null);
   const launcher = useRef<HTMLButtonElement>(null);
-  const requestText = useRef<HTMLTextAreaElement>(null);
   const errorPanel = useRef<HTMLDivElement>(null);
   const today = todayInTimeZone(bookingConfig.timeZone);
   const rules = bookingConfig.rules;
-  const recipient = bookingConfig.directBooking.requestEmail;
-  const email = enquiryEmail(draft, recipient, property.name);
   const titles = ['When would you like to visit?', 'How can the host reach you?', 'Review your enquiry'];
 
   const launch = () => {
@@ -52,13 +54,12 @@ export default function EnquiryProvider({ children }: { children: ReactNode }) {
       if (errors.length) errorPanel.current?.focus();
       else title.current?.focus();
     }
-  }, [step, open, errors]);
+  }, [step, open, errors, submission]);
 
   const update = <K extends keyof EnquiryDraft>(key: K, value: EnquiryDraft[K]) => {
     setDraft(current => ({ ...current, [key]: value }));
-    setCopyStatus('');
   };
-  const go = (next: number) => { setErrors([]); setCopyStatus(''); setStep(next); };
+  const go = (next: number) => { if (!sending.current) { setErrors([]); setStep(next); } };
   const validate = (all = false) => {
     const problems = all
       ? [...dateErrors(draft, rules, today), ...contactErrors(draft)]
@@ -66,17 +67,22 @@ export default function EnquiryProvider({ children }: { children: ReactNode }) {
     setErrors(current => problems.length || current.length ? problems : current);
     return problems.length === 0;
   };
-  const reset = () => { setDraft({ ...emptyEnquiry }); go(0); title.current?.focus(); };
-  const copy = async () => {
-    if (!validate(true)) return;
-    try {
-      if (!navigator.clipboard) throw new Error('Clipboard unavailable');
-      await navigator.clipboard.writeText(email.text);
-      setCopyStatus('Enquiry copied. Paste it into your email app and send it to the address above.');
-    } catch {
-      setCopyStatus('Automatic copying was unavailable. The text below is selected; copy it manually and paste it into your email app.');
-      requestText.current?.focus();
-      requestText.current?.select();
+  const reset = () => {
+    if (sending.current) return;
+    setDraft({ ...emptyEnquiry }); setSubmission('idle'); go(0); title.current?.focus();
+  };
+  const send = async () => {
+    if (sending.current || submission === 'accepted' || !validate(true)) return;
+    sending.current = true;
+    setSubmission('pending');
+    const result = await submitEnquiry(draft, property.name);
+    sending.current = false;
+    if (result.accepted) {
+      setDraft({ ...emptyEnquiry });
+      setSubmission('accepted');
+    } else {
+      setSubmission('idle');
+      setErrors([result.message]);
     }
   };
 
@@ -94,37 +100,37 @@ export default function EnquiryProvider({ children }: { children: ReactNode }) {
           </div>
           <div className="enquiry-content">
             <p id="enquiry-intro" className="assistant-bubble">Tell us your plans. We’ll confirm availability and price by email.</p>
-            <p className="enquiry-progress" role="status">Step {step + 1} of 3 · {['Your dates', 'Your details', 'Review & email'][step]}</p>
-            <h2 id="enquiry-title" ref={title} tabIndex={-1}>{titles[step]}</h2>
+            <p className="enquiry-progress" role="status">{submission === 'accepted' ? 'Enquiry received' : submission === 'pending' ? 'Sending your enquiry…' : `Step ${step + 1} of 3 · ${['Your dates', 'Your details', 'Review & send'][step]}`}</p>
+            <h2 id="enquiry-title" ref={title} tabIndex={-1}>{submission === 'accepted' ? 'Thanks for your enquiry.' : titles[step]}</h2>
             {errors.length > 0 && <div id="enquiry-errors" className="error-summary" role="alert" tabIndex={-1} ref={errorPanel}><strong>Please check:</strong><ul>{errors.map(message => <li key={message}>{message}</li>)}</ul></div>}
-            <form noValidate aria-describedby={errors.length ? 'enquiry-errors' : undefined} onSubmit={event => { event.preventDefault(); if (step < 2 && validate()) go(step + 1); }}>
+            {submission === 'accepted' ? <div className="enquiry-success">
+              <p>The host will follow up by email. Your dates are not reserved and nothing has been charged.</p>
+              <button type="button" className="button" onClick={reset}>Start a new enquiry</button>
+            </div> : <form action={enquiryEndpoint} method="POST" noValidate aria-busy={submission === 'pending'} aria-describedby={errors.length ? 'enquiry-errors' : undefined} onSubmit={event => { event.preventDefault(); if (sending.current) return; if (step < 2) { if (validate()) go(step + 1); } else void send(); }}>
               {step === 0 && <div className="enquiry-fields">
                 <p className="small-note">{rules.minNights}–{rules.maxNights} nights, starting more than {rules.minLeadDays} days ahead.</p>
-                <label className="field" htmlFor="enquiry-checkIn"><span>Preferred check-in</span><input id="enquiry-checkIn" type="date" required min={earliestDirectCheckIn(today, rules)} max={latestDirectCheckIn(today, rules)} value={draft.checkIn} onChange={e => update('checkIn', e.target.value)} /></label>
-                <label className="field" htmlFor="enquiry-checkOut"><span>Preferred checkout</span><input id="enquiry-checkOut" type="date" required min={isIsoDate(draft.checkIn) ? addDays(draft.checkIn, rules.minNights) : earliestDirectCheckIn(today, rules)} value={draft.checkOut} onChange={e => update('checkOut', e.target.value)} /></label>
-                <label className="field" htmlFor="enquiry-guests"><span>Guests, including children</span><select id="enquiry-guests" value={draft.guests} onChange={e => update('guests', Number(e.target.value))}>{Array.from({ length: rules.maxGuests }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1} {i ? 'guests' : 'guest'}</option>)}</select></label>
+                <label className="field" htmlFor="enquiry-checkIn"><span>Preferred check-in</span><input id="enquiry-checkIn" name="checkIn" type="date" required min={earliestDirectCheckIn(today, rules)} max={latestDirectCheckIn(today, rules)} value={draft.checkIn} onChange={e => update('checkIn', e.target.value)} /></label>
+                <label className="field" htmlFor="enquiry-checkOut"><span>Preferred checkout</span><input id="enquiry-checkOut" name="checkOut" type="date" required min={isIsoDate(draft.checkIn) ? addDays(draft.checkIn, rules.minNights) : earliestDirectCheckIn(today, rules)} value={draft.checkOut} onChange={e => update('checkOut', e.target.value)} /></label>
+                <label className="field" htmlFor="enquiry-guests"><span>Guests, including children</span><select id="enquiry-guests" name="guests" value={draft.guests} onChange={e => update('guests', Number(e.target.value))}>{Array.from({ length: rules.maxGuests }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1} {i ? 'guests' : 'guest'}</option>)}</select></label>
               </div>}
               {step === 1 && <div className="enquiry-fields">
-                <label className="field" htmlFor="enquiry-name"><span>Your name</span><input id="enquiry-name" required autoComplete="name" maxLength={100} value={draft.name} onChange={e => update('name', e.target.value)} /></label>
-                <label className="field" htmlFor="enquiry-email"><span>Email for the host’s reply</span><input id="enquiry-email" required type="email" autoComplete="email" maxLength={254} value={draft.email} onChange={e => update('email', e.target.value)} /></label>
-                <label className="field" htmlFor="enquiry-notes"><span>Questions or notes (optional, {NOTES_MAX} characters)</span><textarea id="enquiry-notes" rows={3} maxLength={NOTES_MAX} value={draft.notes} onChange={e => update('notes', e.target.value)} /></label>
+                <label className="field" htmlFor="enquiry-name"><span>Your name</span><input id="enquiry-name" name="name" required autoComplete="name" maxLength={100} value={draft.name} onChange={e => update('name', e.target.value)} /></label>
+                <label className="field" htmlFor="enquiry-email"><span>Email for the host’s reply</span><input id="enquiry-email" name="email" required type="email" autoComplete="email" maxLength={254} value={draft.email} onChange={e => update('email', e.target.value)} /></label>
+                <label className="field" htmlFor="enquiry-notes"><span>Questions or notes (optional, {NOTES_MAX} characters)</span><textarea id="enquiry-notes" name="notes" rows={3} maxLength={NOTES_MAX} value={draft.notes} onChange={e => update('notes', e.target.value)} /></label>
               </div>}
               {step === 2 && <div className="enquiry-review">
                 <div className="guest-bubble"><dl><dt>Preferred dates</dt><dd>{draft.checkIn} to {draft.checkOut}</dd><dt>Guests</dt><dd>{draft.guests}</dd><dt>Your name</dt><dd>{draft.name}</dd><dt>Reply email</dt><dd>{draft.email}</dd><dt>Notes</dt><dd>{draft.notes || 'None'}</dd></dl></div>
-                <div className="enquiry-edit"><button type="button" className="text-button" onClick={() => go(0)}>Edit dates & guests</button><button type="button" className="text-button" onClick={() => go(1)}>Edit contact details</button></div>
-                <p className="assistant-bubble">Opens your email app. Press Send there to request availability. Nothing is reserved or charged.</p>
-                <p className="enquiry-recipient">Send to: <strong>{recipient}</strong></p>
-                <a className="button enquiry-send" href={email.href} onClick={event => { if (!validate(true)) event.preventDefault(); }}>Open email to send enquiry</a>
-                <button type="button" className="button button-secondary" onClick={copy}>Copy enquiry</button>
-                <p role="status" className="small-note">{copyStatus}</p>
-                <label className="field" htmlFor="enquiry-text"><span>Or copy into your own email.</span><textarea id="enquiry-text" ref={requestText} readOnly rows={6} value={email.text} /></label>
+                <div className="enquiry-edit"><button type="button" className="text-button" disabled={submission === 'pending'} onClick={() => go(0)}>Edit dates & guests</button><button type="button" className="text-button" disabled={submission === 'pending'} onClick={() => go(1)}>Edit contact details</button></div>
+                <p className="small-note">Nothing is reserved or charged. Your details are sent through Formspree for the host to follow up.</p>
+                <Link className="text-link" to={`/${pageRoutes.privacy.path}`} onClick={close}>Privacy</Link>
+                <button className="button enquiry-send" type="submit" disabled={submission === 'pending'}>{submission === 'pending' ? 'Sending…' : 'Send'}</button>
               </div>}
               <div className="enquiry-actions">
-                {step > 0 && <button className="text-button" type="button" onClick={() => go(step - 1)}>Back</button>}
+                {step > 0 && <button className="text-button" type="button" disabled={submission === 'pending'} onClick={() => go(step - 1)}>Back</button>}
                 {step < 2 && <button className="button" type="submit">{step === 0 ? 'Continue' : 'Review enquiry'}</button>}
-                <button className="text-button" type="button" onClick={reset}>Clear & start over</button>
+                <button className="text-button" type="button" disabled={submission === 'pending'} onClick={reset}>Clear & start over</button>
               </div>
-            </form>
+            </form>}
           </div>
         </dialog>
       </>}

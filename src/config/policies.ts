@@ -127,10 +127,11 @@ export const policies: Record<PolicyKey, Policy> = {
         paragraphs: ['The site is hosted on GitHub Pages. GitHub may record technical information such as IP addresses when pages are requested, under GitHub’s own privacy statement.'],
       },
       {
-        heading: 'Direct bookings',
+        heading: 'Availability enquiries and bookings',
         items: [
-          'The booking request form runs only in your browser. This website does not save, send or store what you type. When you submit, it opens an email in your own email app, addressed to the host, and nothing is shared until you choose to send it.',
-          'The request email contains your dates, guest count, name, email, phone, arrival time, purpose of stay, pet details, notes and the policies you agreed to.',
+          'Before you press Send, enquiry answers stay in your browser’s memory. Minimizing the panel keeps the draft; clearing it or reloading removes it. This website does not use localStorage or sessionStorage for enquiries.',
+          'When you press Send, your preferred dates, guest count, name, email and optional notes are sent securely to Formspree, our form-processing provider, for the host to review and follow up. Formspree receives and stores submissions and may process technical information for spam prevention under its privacy policy at https://formspree.io/legal/privacy-policy/. Do not include payment details or sensitive information in your notes.',
+          'A confirmation means the form service accepted your enquiry, not that availability or a booking has been confirmed. The host replies separately by email.',
           'If the host accepts, payment is collected through a Stripe invoice. Stripe processes your card details under Stripe’s privacy policy; they never reach this website or the host.',
           'The public availability calendar lists blocked dates only. It never includes guest names or contact details.',
           'The host uses your contact details only to manage your stay and to meet tax and legal record-keeping duties.',

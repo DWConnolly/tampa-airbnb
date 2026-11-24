@@ -245,14 +245,14 @@ export const siteCopy = {
   },
   enquiry: {
     label: 'Enquire direct (no fees)',
-    note: 'Share your plans, then email your enquiry. The host confirms dates and price.',
+    note: 'Share your plans and send your enquiry here. The host confirms dates and price.',
   },
   footer: {
     location: 'A neighborhood home in Tampa Heights, Florida.',
     note: directBookingReady
       ? `Book on Airbnb, or request a direct booking on this website for stays starting more than ${minLeadDays} days out. Accepted direct requests are paid through a Stripe invoice from the host.`
       : directEnquiryAvailable
-        ? 'Email the host to enquire about a stay, or book on Airbnb. An enquiry does not reserve dates or take payment.'
+        ? 'Send an enquiry about a stay, or book on Airbnb. An enquiry does not reserve dates or take payment.'
         : 'Reservations and payments are handled on Airbnb.',
   },
 };

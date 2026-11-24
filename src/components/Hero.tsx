@@ -21,7 +21,7 @@ export default function Hero() {
             <SecondaryBookingLink />
             <a className="text-link explore-link" href="#the-home">{siteCopy.hero.explore}<ArrowDown size={16} aria-hidden="true" /></a>
           </div>
-          {enquiryAvailable && <p className="enquiry-hint">A guided enquiry, then an email for the host to follow up.</p>}
+          {enquiryAvailable && <p className="enquiry-hint">Share your plans. The host will follow up by email.</p>}
         </div>
         <figure className="hero-photo">
           <PropertyImage image={galleryImages[0]} priority sizes="(min-width: 1440px) 850px, (min-width: 900px) 62vw, 100vw" />

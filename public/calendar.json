@@ -14,6 +14,7 @@
     "open": false,
     "problems": [
       "Direct booking is not enabled in data/booking-config.json.",
+      "No booking-request email address (directBooking.requestEmail) is configured.",
       "Owner has not confirmed: rates.",
       "Owner has not confirmed: taxes.",
       "Owner has not confirmed: policies.",
@@ -22,7 +23,7 @@
       "Owner has not confirmed: requestInboxAndInvoicing.",
       "The Airbnb calendar feed (AIRBNB_ICAL_URL) is not configured."
     ],
-    "requestEmail": "kimberlyfconnolly@gmail.com",
+    "requestEmail": "",
     "termsVersion": "draft-2026-11-15",
     "rules": {
       "minLeadDays": 7,

@@ -1,5 +1,5 @@
 import { validateStay, stayErrorMessages, type StayRules } from '../../shared/booking/rules.ts';
-import { mailtoUrl, NOTES_MAX } from '../../shared/booking/request.ts';
+import { NOTES_MAX } from '../../shared/booking/request.ts';
 
 export interface EnquiryDraft {
   checkIn: string;
@@ -25,15 +25,16 @@ export function contactErrors(draft: EnquiryDraft): string[] {
   return errors;
 }
 
-export function enquiryEmail(draft: EnquiryDraft, recipient: string, propertyName: string) {
+export function enquiryPayload(draft: EnquiryDraft, propertyName: string) {
   const oneLine = (text: string) => text.replace(/\s+/g, ' ').trim();
-  const subject = `Availability enquiry for ${propertyName}`;
-  const body = [
-    `Hello, I'd like to enquire about a stay at ${propertyName}.`,
-    '', `Preferred check-in: ${draft.checkIn}`, `Preferred checkout: ${draft.checkOut}`,
-    `Guests: ${draft.guests}`, `Name: ${oneLine(draft.name)}`, `Email: ${oneLine(draft.email)}`,
-    `Notes: ${draft.notes.trim() || 'None'}`, '',
-    'This is an enquiry only. Please confirm availability and price. No dates are held and no payment is taken.',
-  ].join('\r\n');
-  return { href: mailtoUrl(recipient, subject, body), text: `To: ${recipient}\nSubject: ${subject}\n\n${body.replace(/\r\n/g, '\n')}` };
+  return {
+    subject: `Availability enquiry for ${propertyName}`,
+    checkIn: draft.checkIn,
+    checkOut: draft.checkOut,
+    guests: draft.guests,
+    name: oneLine(draft.name),
+    email: draft.email.trim(),
+    notes: draft.notes.trim(),
+    message: 'Availability enquiry only. The host confirms dates and price. No dates are held and no payment is taken.',
+  };
 }

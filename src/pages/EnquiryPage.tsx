@@ -7,6 +7,6 @@ export default function EnquiryPage() {
     <h1 id="enquiry-page-title">A little closer to Tampa.</h1>
     <p>Share your preferred dates and group size. The host will follow up by email.</p>
     <div className="closing-actions"><PrimaryBookingLink className="button" /><SecondaryBookingLink /></div>
-    <p className="small-note">Review your enquiry, then send it from your email app. No dates held or payment taken.</p>
+    <p className="small-note">Review your enquiry and send it here. No dates held or payment taken.</p>
   </section></PageLayout>;
 }
