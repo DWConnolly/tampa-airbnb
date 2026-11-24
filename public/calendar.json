@@ -27,7 +27,7 @@
     "termsVersion": "draft-2026-11-15",
     "rules": {
       "minLeadDays": 7,
-      "minNights": 2,
+      "minNights": 3,
       "maxNights": 28,
       "maxGuests": 6,
       "bookingHorizonDays": 365

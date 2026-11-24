@@ -293,7 +293,7 @@ async function intakeChecks() {
       const direct = container.querySelector('button[aria-haspopup="dialog"]');
       const airbnb = container.querySelector('a[href*="airbnb.com"]');
       return {
-        labels: buttons.every(button => button.textContent.trim() === 'Enquire direct (no fees)'),
+        labels: buttons.every(button => button.textContent.trim() === 'Book direct (Best rate)'),
         visible: __check.unobscured(direct) && __check.unobscured(airbnb),
         overflow: __check.overflow().excess,
         airbnb: airbnb?.href,
@@ -301,10 +301,14 @@ async function intakeChecks() {
         launcherDirectOnly: !document.querySelector('.enquiry-launcher a'),
       };
     });
-    record(`CTA ${width}: no-fees label, plain airbnb and direct-only launcher`, copy.labels && copy.visible && copy.overflow <= 1 && copy.airbnb === expectedAirbnb && copy.airbnbLabels && copy.launcherDirectOnly, copy);
+    record(`CTA ${width}: Best rate label, plain airbnb and direct-only launcher`, copy.labels && copy.visible && copy.overflow <= 1 && copy.airbnb === expectedAirbnb && copy.airbnbLabels && copy.launcherDirectOnly, copy);
     if ([390, 1440].includes(width)) await screenshot(`${args.includes('--live') ? 'live' : 'preview'}-cta-${width}`);
     await cdp.evaluate(() => document.querySelector('.hero-booking').click());
     record(`CTA ${width}: simplified enquiry opens without removed instructions`, await cdp.evaluate(() => document.querySelector('#enquiry-dialog').open && !/arriving sooner|Guided enquiry · not a live chat|Your draft stays here when minimized/i.test(document.body.textContent) && !document.querySelector('#enquiry-dialog a[href*="airbnb.com"]')));
+    record(`CTA ${width}: American copy and only three-night minimum displayed`, await cdp.evaluate(() => {
+      const text = document.body.textContent;
+      return !/\benquir(?:y|ies|e)\b/i.test(text) && document.querySelector('.enquiry-fields > .small-note').textContent === '3-night minimum' && !/\b28\b|\bmaximum\b|days ahead/i.test(document.querySelector('#enquiry-dialog').textContent);
+    }));
   }
   const start = addDays(todayInTimeZone(config.timeZone), config.rules.minLeadDays + 3);
   const end = addDays(start, config.rules.minNights);
@@ -329,6 +333,8 @@ async function intakeChecks() {
     record(`Intake ${width}: missing dates announced`, await cdp.evaluate(() => document.activeElement.matches('#enquiry-errors') && document.querySelector('#enquiry-errors').getAttribute('role') === 'alert'));
     await fill('enquiry-checkIn', start); await fill('enquiry-checkOut', start); await submit();
     record(`Intake ${width}: reversed/equal dates rejected`, await cdp.evaluate(() => !!document.querySelector('#enquiry-errors') && !!document.querySelector('#enquiry-checkIn')));
+    await fill('enquiry-checkOut', addDays(start, 2)); await submit();
+    record(`Intake ${width}: two-night stay rejected`, await cdp.evaluate(() => document.querySelector('#enquiry-errors')?.textContent.includes('minimum') && !!document.querySelector('#enquiry-checkIn')));
     await fill('enquiry-checkOut', end);
     await fill('enquiry-guests', '6');
     await key('Escape');
@@ -381,7 +387,7 @@ async function intakeChecks() {
     record(`Intake ${width}: pending submission survives navigation and reopen`, await cdp.evaluate(() => document.querySelector('.enquiry-send').disabled && window.__formTest.calls.length === 5));
     await cdp.evaluate(() => window.__formTest.finish());
     await waitFor(() => cdp.evaluate(() => !!document.querySelector('.enquiry-success') && document.activeElement.id === 'enquiry-title'));
-    record(`Intake ${width}: acceptance alone displays received without booking claim`, await cdp.evaluate(() => document.querySelector('.enquiry-progress').textContent === 'Enquiry received' && document.querySelector('.enquiry-success').textContent.includes('not reserved') && !document.querySelector('.guest-bubble, .enquiry-send')));
+    record(`Intake ${width}: acceptance alone displays received without booking claim`, await cdp.evaluate(() => document.querySelector('.enquiry-progress').textContent === 'Inquiry received' && document.querySelector('.enquiry-success').textContent.includes('not reserved') && !document.querySelector('.guest-bubble, .enquiry-send')));
     if (width === 390) await screenshot(`${args.includes('--live') ? 'live' : 'preview'}-form-accepted-${width}`);
     await key('Escape'); await click('.enquiry-launcher button');
     record(`Intake ${width}: reopening success cannot resubmit`, await cdp.evaluate(() => !!document.querySelector('.enquiry-success') && !document.querySelector('.enquiry-send') && window.__formTest.calls.length === 5));
@@ -939,7 +945,7 @@ async function axeAudit() {
             Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(el, value);
             el.dispatchEvent(new Event('input', { bubbles: true }));
           }
-        }, addDays(todayInTimeZone('America/New_York'), 10), addDays(todayInTimeZone('America/New_York'), 12));
+        }, addDays(todayInTimeZone('America/New_York'), 10), addDays(todayInTimeZone('America/New_York'), 13));
         await cdp.evaluate(() => document.querySelector('#enquiry-dialog form').requestSubmit());
         if (state === 'intake-review') {
           await cdp.evaluate(() => {

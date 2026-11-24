@@ -10,7 +10,7 @@ export interface PageRoute {
 }
 
 export const pageRoutes = {
-  book: { path: 'book/', title: siteTitle, description: 'Prepare an availability enquiry for Blue Bliss By The Bay with our guided stay assistant. The host confirms dates and price by email.' },
+  book: { path: 'book/', title: siteTitle, description: 'Prepare an availability inquiry for Blue Bliss By The Bay with our guided stay assistant. The host confirms dates and price by email.' },
   cancellation: { path: 'policies/cancellation/', title: siteTitle, description: 'Cancellation policy for direct bookings at Blue Bliss By The Bay.' },
   houseRules: { path: 'policies/house-rules/', title: siteTitle, description: 'House rules for Blue Bliss By The Bay in Tampa Heights.' },
   rentalTerms: { path: 'policies/rental-terms/', title: siteTitle, description: 'Rental terms for direct bookings at Blue Bliss By The Bay.' },

@@ -28,13 +28,13 @@ export function contactErrors(draft: EnquiryDraft): string[] {
 export function enquiryPayload(draft: EnquiryDraft, propertyName: string) {
   const oneLine = (text: string) => text.replace(/\s+/g, ' ').trim();
   return {
-    subject: `Availability enquiry for ${propertyName}`,
+    subject: `Availability inquiry for ${propertyName}`,
     checkIn: draft.checkIn,
     checkOut: draft.checkOut,
     guests: draft.guests,
     name: oneLine(draft.name),
     email: draft.email.trim(),
     notes: draft.notes.trim(),
-    message: 'Availability enquiry only. The host confirms dates and price. No dates are held and no payment is taken.',
+    message: 'Availability inquiry only. The host confirms dates and price. No dates are held and no payment is taken.',
   };
 }

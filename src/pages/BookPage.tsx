@@ -183,7 +183,7 @@ function BookingForm({ calendar }: { calendar: CalendarDocument }) {
             <div className="calendar-heading">
               <p className="eyebrow">Step 01 / Your stay</p>
               <h2 id="dates-title">Choose your dates.</h2>
-              <p className="small-note">Select check-in, then checkout. Minimum {rules.minNights} nights · maximum {rules.maxNights} nights.</p>
+              <p className="small-note">Select check-in, then checkout. {rules.minNights}-night minimum.</p>
             </div>
             <DayPicker
               mode="range"

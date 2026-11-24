@@ -7,9 +7,9 @@ import { readFileSync } from 'node:fs';
 import { buildCalendar } from '../shared/booking/sync.ts';
 import type { BookingConfig, CalendarDocument } from '../shared/booking/config.ts';
 
-const rules = { minLeadDays: 7, minNights: 2, maxNights: 28, maxGuests: 6, bookingHorizonDays: 365 };
+const rules = { minLeadDays: 7, minNights: 3, maxNights: 28, maxGuests: 6, bookingHorizonDays: 365 };
 const today = '2027-01-01';
-const valid = { ...emptyEnquiry, checkIn: '2027-01-10', checkOut: '2027-01-12', name: 'Test Guest', email: 'guest@example.invalid' };
+const valid = { ...emptyEnquiry, checkIn: '2027-01-10', checkOut: '2027-01-13', name: 'Test Guest', email: 'guest@example.invalid' };
 
 test('enquiry checks real dates, order, stay constraints and guest bounds without claiming availability', () => {
   assert.deepEqual(dateErrors(valid, rules, today), []);
@@ -24,7 +24,7 @@ test('enquiry requires usable name/email and bounded notes', () => {
 test('structured payload retains enquiry details without recipient or payment claims', () => {
   const result = enquiryPayload({ ...valid, name: ' Test & Guest ', notes: 'A & B? #1\nSecond line' }, 'Blue Bliss');
   assert.equal(result.email, valid.email);
-  assert.equal(result.subject, 'Availability enquiry for Blue Bliss');
+  assert.equal(result.subject, 'Availability inquiry for Blue Bliss');
   assert.equal(result.name, 'Test & Guest');
   assert.equal(result.checkIn, valid.checkIn);
   assert.equal(result.guests, 2);
@@ -89,4 +89,14 @@ test('current owner config and future calendar sync keep the notification recipi
   assert.equal(previous.booking.requestEmail, '');
   assert.equal(result.calendar.booking.requestEmail, '');
   assert.equal(result.calendar.booking.open, false);
+});
+
+test('configured three-night minimum rejects two nights and preserves maximum stay', () => {
+  const config: BookingConfig = JSON.parse(readFileSync(new URL('../data/booking-config.json', import.meta.url), 'utf8'));
+  assert.equal(config.rules.minNights, 3);
+  assert.equal(config.rules.maxNights, 28);
+  assert.ok(dateErrors({ ...valid, checkOut: '2027-01-12' }, config.rules, today).some(error => error.includes('minimum')));
+  assert.deepEqual(dateErrors(valid, config.rules, today), []);
+  assert.deepEqual(dateErrors({ ...valid, checkOut: '2027-02-07' }, config.rules, today), []);
+  assert.ok(dateErrors({ ...valid, checkOut: '2027-02-08' }, config.rules, today).some(error => error.includes('maximum')));
 });

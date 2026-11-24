@@ -245,15 +245,15 @@ export const siteCopy = {
     note: `Planning more than ${minLeadDays} days ahead? Pick your dates here and send a request. The host reviews it and emails a secure Stripe invoice; nothing is charged on this website.`,
   },
   enquiry: {
-    label: 'Enquire direct (no fees)',
-    note: 'Share your plans and send your enquiry here. The host confirms dates and price.',
+    label: 'Book direct (Best rate)',
+    note: 'Share your plans and send your inquiry here. The host confirms dates and price.',
   },
   footer: {
     location: 'A neighborhood home in Tampa Heights, Florida.',
     note: directBookingReady
       ? `Book on Airbnb, or request a direct booking on this website for stays starting more than ${minLeadDays} days out. Accepted direct requests are paid through a Stripe invoice from the host.`
       : directEnquiryAvailable
-        ? 'Send an enquiry about a stay, or book on Airbnb. An enquiry does not reserve dates or take payment.'
+        ? 'Send an inquiry about a stay, or book on Airbnb. An inquiry does not reserve dates or take payment.'
         : 'Reservations and payments are handled on Airbnb.',
   },
 };
@@ -275,7 +275,7 @@ export const ownerVerification = {
     'Confirm the current arrival/checkout window, pet/smoking/event rules, quiet hours, and cancellation terms. Old supplied times (3–10 PM arrival, 11 AM departure) are intentionally not published.',
     'Confirm bedroom names, bed sizes, loft layout, parking capacity/restrictions, fire pit usage, and the listed amenities.',
     'Confirm the production domain and Airbnb listing URL.',
-    'Bliss Sync direct booking stays closed until every ownerConfirmations value in data/booking-config.json is true: real rates, tax registrations and rates, policies (src/config/policies.ts drafts), licences, insurance, and the booking-request inbox and Stripe invoicing setup.',
+    'Bliss Sync direct booking stays closed until every ownerConfirmations value in data/booking-config.json is true: real rates, tax registrations and rates, policies (src/config/policies.ts drafts), licenses, insurance, and the booking-request inbox and Stripe invoicing setup.',
     'Approve the existing JPEG social preview: confirm the same property, crop, and publishing rights. Automated similarity is not owner verification.',
   ],
   photoReview: '56 Lightroom photos imported. Supply room-by-room captions/alt descriptions and map bedroom photos to the named rooms. Confirm coverage of the loft sofa bed, bathrooms, parking, and entry; no room labels were inferred from filenames.',

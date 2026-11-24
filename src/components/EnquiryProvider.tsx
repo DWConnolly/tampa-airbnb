@@ -26,7 +26,7 @@ export default function EnquiryProvider({ children }: { children: ReactNode }) {
   const errorPanel = useRef<HTMLDivElement>(null);
   const today = todayInTimeZone(bookingConfig.timeZone);
   const rules = bookingConfig.rules;
-  const titles = ['When would you like to visit?', 'How can the host reach you?', 'Review your enquiry'];
+  const titles = ['When would you like to visit?', 'How can the host reach you?', 'Review your inquiry'];
 
   const launch = () => {
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -90,25 +90,25 @@ export default function EnquiryProvider({ children }: { children: ReactNode }) {
     <EnquiryContext.Provider value={launch}>
       {children}
       {enquiryAvailable && <>
-        <aside className="enquiry-launcher" aria-label="Availability enquiry">
+        <aside className="enquiry-launcher" aria-label="Availability inquiry">
           <button ref={launcher} className="button" onClick={launch} aria-haspopup="dialog" aria-controls="enquiry-dialog"><MessageCircle size={20} aria-hidden="true" /><span>{siteCopy.enquiry.label}</span></button>
         </aside>
         <dialog ref={dialog} id="enquiry-dialog" className="enquiry-dialog" aria-labelledby="enquiry-title" aria-describedby="enquiry-intro" onCancel={event => { event.preventDefault(); close(); }}>
           <div className="enquiry-top">
             <span className="eyebrow">Blue Bliss stay assistant</span>
-            <button className="icon-button" type="button" onClick={close} aria-label="Minimize enquiry"><X aria-hidden="true" /></button>
+            <button className="icon-button" type="button" onClick={close} aria-label="Minimize inquiry"><X aria-hidden="true" /></button>
           </div>
           <div className="enquiry-content">
             <p id="enquiry-intro" className="assistant-bubble">Tell us your plans. We’ll confirm availability and price by email.</p>
-            <p className="enquiry-progress" role="status">{submission === 'accepted' ? 'Enquiry received' : submission === 'pending' ? 'Sending your enquiry…' : `Step ${step + 1} of 3 · ${['Your dates', 'Your details', 'Review & send'][step]}`}</p>
-            <h2 id="enquiry-title" ref={title} tabIndex={-1}>{submission === 'accepted' ? 'Thanks for your enquiry.' : titles[step]}</h2>
+            <p className="enquiry-progress" role="status">{submission === 'accepted' ? 'Inquiry received' : submission === 'pending' ? 'Sending your inquiry…' : `Step ${step + 1} of 3 · ${['Your dates', 'Your details', 'Review & send'][step]}`}</p>
+            <h2 id="enquiry-title" ref={title} tabIndex={-1}>{submission === 'accepted' ? 'Thanks for your inquiry.' : titles[step]}</h2>
             {errors.length > 0 && <div id="enquiry-errors" className="error-summary" role="alert" tabIndex={-1} ref={errorPanel}><strong>Please check:</strong><ul>{errors.map(message => <li key={message}>{message}</li>)}</ul></div>}
             {submission === 'accepted' ? <div className="enquiry-success">
               <p>The host will follow up by email. Your dates are not reserved and nothing has been charged.</p>
-              <button type="button" className="button" onClick={reset}>Start a new enquiry</button>
+              <button type="button" className="button" onClick={reset}>Start a new inquiry</button>
             </div> : <form action={enquiryEndpoint} method="POST" noValidate aria-busy={submission === 'pending'} aria-describedby={errors.length ? 'enquiry-errors' : undefined} onSubmit={event => { event.preventDefault(); if (sending.current) return; if (step < 2) { if (validate()) go(step + 1); } else void send(); }}>
               {step === 0 && <div className="enquiry-fields">
-                <p className="small-note">{rules.minNights}–{rules.maxNights} nights, starting more than {rules.minLeadDays} days ahead.</p>
+                <p className="small-note">{rules.minNights}-night minimum</p>
                 <label className="field" htmlFor="enquiry-checkIn"><span>Preferred check-in</span><input id="enquiry-checkIn" name="checkIn" type="date" required min={earliestDirectCheckIn(today, rules)} max={latestDirectCheckIn(today, rules)} value={draft.checkIn} onChange={e => update('checkIn', e.target.value)} /></label>
                 <label className="field" htmlFor="enquiry-checkOut"><span>Preferred checkout</span><input id="enquiry-checkOut" name="checkOut" type="date" required min={isIsoDate(draft.checkIn) ? addDays(draft.checkIn, rules.minNights) : earliestDirectCheckIn(today, rules)} value={draft.checkOut} onChange={e => update('checkOut', e.target.value)} /></label>
                 <label className="field" htmlFor="enquiry-guests"><span>Guests, including children</span><select id="enquiry-guests" name="guests" value={draft.guests} onChange={e => update('guests', Number(e.target.value))}>{Array.from({ length: rules.maxGuests }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1} {i ? 'guests' : 'guest'}</option>)}</select></label>
@@ -127,7 +127,7 @@ export default function EnquiryProvider({ children }: { children: ReactNode }) {
               </div>}
               <div className="enquiry-actions">
                 {step > 0 && <button className="text-button" type="button" disabled={submission === 'pending'} onClick={() => go(step - 1)}>Back</button>}
-                {step < 2 && <button className="button" type="submit">{step === 0 ? 'Continue' : 'Review enquiry'}</button>}
+                {step < 2 && <button className="button" type="submit">{step === 0 ? 'Continue' : 'Review inquiry'}</button>}
                 <button className="text-button" type="button" disabled={submission === 'pending'} onClick={reset}>Clear & start over</button>
               </div>
             </form>}
