@@ -266,7 +266,7 @@ async function intakeChecks() {
     await navigate(width, width < 600 ? 844 : 960);
     const copy = await cdp.evaluate(() => {
       const buttons = [...document.querySelectorAll('.enquiry-link, .enquiry-launcher button')];
-      const container = innerWidth >= 1100 ? document.querySelector('.header-inner') : document.querySelector('.enquiry-launcher');
+      const container = innerWidth >= 1100 ? document.querySelector('.header-inner') : document.querySelector('.hero-actions');
       const direct = container.querySelector('button[aria-haspopup="dialog"]');
       const airbnb = container.querySelector('a[href*="airbnb.com"]');
       return {
@@ -274,12 +274,14 @@ async function intakeChecks() {
         visible: __check.unobscured(direct) && __check.unobscured(airbnb),
         overflow: __check.overflow().excess,
         airbnb: airbnb?.href,
+        airbnbLabels: [...document.querySelectorAll('a[href*="airbnb.com"]')].every(a => a.textContent.trim() === 'airbnb'),
+        launcherDirectOnly: !document.querySelector('.enquiry-launcher a'),
       };
     });
-    record(`CTA ${width}: no-fees label with visible Airbnb and no overflow`, copy.labels && copy.visible && copy.overflow <= 1 && copy.airbnb === expectedAirbnb, copy);
+    record(`CTA ${width}: no-fees label, plain airbnb and direct-only launcher`, copy.labels && copy.visible && copy.overflow <= 1 && copy.airbnb === expectedAirbnb && copy.airbnbLabels && copy.launcherDirectOnly, copy);
     if ([390, 1440].includes(width)) await screenshot(`${args.includes('--live') ? 'live' : 'preview'}-cta-${width}`);
     await cdp.evaluate(() => document.querySelector('.hero-booking').click());
-    record(`CTA ${width}: guided enquiry opens without arriving-sooner copy`, await cdp.evaluate(() => document.querySelector('#enquiry-dialog').open && !/arriving sooner/i.test(document.body.textContent) && document.querySelector('#enquiry-dialog a[href*="airbnb.com"]')?.textContent === 'Check Airbnb'));
+    record(`CTA ${width}: simplified enquiry opens without removed instructions`, await cdp.evaluate(() => document.querySelector('#enquiry-dialog').open && !/arriving sooner|Guided enquiry · not a live chat|Your draft stays here when minimized/i.test(document.body.textContent) && !document.querySelector('#enquiry-dialog a[href*="airbnb.com"]')));
   }
   const start = addDays(todayInTimeZone(config.timeZone), config.rules.minLeadDays + 3);
   const end = addDays(start, config.rules.minNights);
@@ -325,7 +327,7 @@ async function intakeChecks() {
       const link = document.querySelector('.enquiry-send');
       const u = new URL(link.href);
       return u.protocol === 'mailto:' && u.pathname === recipient && u.searchParams.get('body').includes('A & B? #1') &&
-        document.querySelector('.enquiry-review').textContent.includes('has not been delivered') &&
+        document.querySelector('.enquiry-review').textContent.includes('Press Send there to request availability') &&
         link.textContent === 'Open email to send enquiry';
     }, config.directBooking.requestEmail);
     record(`Intake ${width}: review has correct mailto and no false delivery claim`, review);

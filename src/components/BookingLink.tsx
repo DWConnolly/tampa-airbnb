@@ -24,6 +24,6 @@ export function PrimaryBookingLink({ className = '' }: { className?: string }) {
 
 export function SecondaryBookingLink({ className = '' }: { className?: string }) {
   return enquiryAvailable
-    ? <BookingLink className={`text-link secondary-booking ${className}`}>Book on Airbnb</BookingLink>
+    ? <BookingLink className={`text-link secondary-booking ${className}`}>airbnb</BookingLink>
     : null;
 }

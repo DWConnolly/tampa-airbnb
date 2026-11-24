@@ -193,7 +193,7 @@ export const houseGuidelines = [
 ];
 
 export const siteCopy = {
-  bookingLabel: 'Check availability on Airbnb',
+  bookingLabel: 'airbnb',
   hero: {
     eyebrow: 'Out of office, into Tampa',
     headline: 'Your Tampa',
@@ -210,7 +210,7 @@ export const siteCopy = {
     galleryEyebrow: 'The photo journal',
     galleryHeading: 'Take a look around.',
     galleryNote: 'The home, inside and out. Open any photograph to explore the full collection.',
-    galleryLink: 'See the home on Airbnb',
+    galleryLink: 'airbnb',
     galleryTitle: 'Property photos',
     viewAll: 'View all',
     photoLabel: 'photos',
@@ -236,7 +236,7 @@ export const siteCopy = {
     awayLabel: 'Your day out',
     awayDescription: 'Armature Works · Downtown Tampa · Tampa Bay',
   },
-  reviews: { eyebrow: 'Guest notes', title: 'Little moments. Lasting memories.', more: 'Read more guest comments', link: 'Read reviews on Airbnb' },
+  reviews: { eyebrow: 'Guest notes', title: 'Little moments. Lasting memories.', more: 'Read more guest comments', link: 'airbnb' },
   faq: { eyebrow: 'Before you arrive', title: 'A few things to know.', description: 'A clear plan makes for an easier stay. Airbnb has the current house rules and reservation details.' },
   booking: { eyebrow: 'Make Tampa your next getaway', title: 'Make the plans.', titleAccent: 'We’re your home base.', description: 'Stay close to Armature Works in a Tampa Heights home for up to six. Choose your dates on Airbnb and let the Tampa plans begin.', note: 'See availability, total pricing, and booking terms on Airbnb. Questions? Message the host there.', caption: 'After the day out / a place that is all yours' },
   directBooking: {
@@ -245,7 +245,7 @@ export const siteCopy = {
   },
   enquiry: {
     label: 'Enquire direct (no fees)',
-    note: 'Enquire direct opens our guided stay assistant. Review your enquiry, then open your email app and press Send yourself. The host confirms dates and price; no dates are held and no payment is taken.',
+    note: 'Share your plans, then email your enquiry. The host confirms dates and price.',
   },
   footer: {
     location: 'A neighborhood home in Tampa Heights, Florida.',

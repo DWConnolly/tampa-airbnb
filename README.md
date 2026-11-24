@@ -38,7 +38,7 @@ Primary actions in the hero, navigation and closing invitation open the same mou
 
 The intake uses simple preferred-date inputs rather than an availability calendar, and enforces the existing lead time, minimum/maximum nights, booking horizon and six-guest limit using the shared validators. No blocked-date feed is used to claim availability: the owner checks availability and price manually. Check-ins within seven days point to Airbnb. There are no quotes, policy acknowledgements or payment steps in this enquiry. `src/pages/BookPage.tsx` retains the previous calendar/quote/request implementation for a future explicit restoration; switching readiness flags alone does not restore that route. No booking rules, owner confirmations, calendar files or runtime dependencies changed.
 
-The direct action uses the owner-requested “Enquire direct (no fees)” label consistently, with Airbnb retained alongside it. The intake no longer uses “Arriving sooner” wording. These are copy-only changes: rates, taxes, cleaning charges, stay constraints and the email handoff are unchanged.
+The direct action uses the owner-requested “Enquire direct (no fees)” label consistently. Remaining Airbnb action links read “airbnb”; the floating launcher and intake panel are direct-only. The intake omits “Arriving sooner,” the live-chat disclaimer and the repetitive draft-retention footer. Review still explicitly tells guests to press Send in their email app. These are copy-only changes: rates, taxes, cleaning charges, stay constraints, in-memory drafts and the email handoff are unchanged.
 
 Policy pages retain their original text and draft gates, with a numbered table of contents, focusable anchor destinations, a constrained reading measure, and a sticky desktop contents panel.
 
